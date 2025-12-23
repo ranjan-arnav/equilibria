@@ -146,8 +146,7 @@ def deserialize_decisions(data_list):
 
 # Initialize session state
 def init_session_state():
-    # Try to load cached user data first
-    cached = load_user_cache()
+    # Session-based storage only (no file cache)
     
     if "orchestrator" not in st.session_state:
         st.session_state.orchestrator = None
