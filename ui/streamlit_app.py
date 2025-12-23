@@ -1621,8 +1621,14 @@ def render_chat():
         if st.button("📤 Send Voice Message", type="primary", use_container_width=True, key="send_voice"):
             with st.spinner("🎙️ Transcribing..."):
                 try:
-                    # Get audio bytes
+                    # Get audio bytes and show debug info
                     audio_bytes = audio_val.getvalue()
+                    
+                    # Debug info for Streamlit Cloud
+                    with st.expander("🔍 Debug Info", expanded=False):
+                        st.write(f"Audio size: {len(audio_bytes)} bytes")
+                        st.write(f"Audio type: {type(audio_val)}")
+                        st.write(f"Has API key: {bool(os.getenv('GROQ_API_KEY'))}")
                     
                     # Try transcription
                     transcript = st.session_state.chat_agent.transcribe_audio(audio_val)
