@@ -65,46 +65,14 @@ st.set_page_config(
         '''
     }
 )
-# User data persistence
+# User data persistence - Session-based only (no shared file)
 import json
-
-USER_CACHE_FILE = os.path.join(os.path.dirname(__file__), ".user_cache.json")
-
-def load_user_cache():
-    """Load cached user data from file."""
-    try:
-        if os.path.exists(USER_CACHE_FILE):
-            with open(USER_CACHE_FILE, 'r') as f:
-                return json.load(f)
-    except:
-        pass
-    return None
-
-def save_user_cache(data):
-    """Save user data to cache file."""
-    try:
-        with open(USER_CACHE_FILE, 'w') as f:
-            json.dump(data, f)
-    except:
-        pass
 
 def persist_session_data():
     """Helper to save all persistent session data."""
-    if "onboarding_complete" not in st.session_state:
-        return
-        
-    data = {
-        "onboarding_complete": st.session_state.onboarding_complete,
-        "user_name": st.session_state.user_name,
-        "user_age": st.session_state.user_age,
-        "user_goal": st.session_state.user_goal,
-        "adherence_score": st.session_state.get("adherence_score", 85),
-        "streak_count": st.session_state.get("streak_count", 0),
-        "last_active_date": st.session_state.get("last_active_date"),
-        "chat_history": st.session_state.get("chat_history", []),
-        "decision_history": [d.to_dict() for d in st.session_state.get("decision_history", [])]
-    }
-    save_user_cache(data)
+    # Session data is now only stored in st.session_state
+    # No file persistence to avoid cross-user contamination
+    pass
 
 def deserialize_decisions(data_list):
     """Reconstruct TradeOffDecision objects from JSON dicts."""
@@ -204,31 +172,22 @@ def init_session_state():
     
     # Load chat history
     if "chat_history" not in st.session_state:
-        if cached and "chat_history" in cached:
-            st.session_state.chat_history = cached["chat_history"]
-        else:
-            st.session_state.chat_history = []
+        st.session_state.chat_history = []
             
     if "wearable_data" not in st.session_state:
         st.session_state.wearable_data = None
         
-    # Load decision history
+    # Load decision history (session-only)
     if "decision_history" not in st.session_state:
-        if cached and "decision_history" in cached:
-            st.session_state.decision_history = deserialize_decisions(cached["decision_history"])
-            # Restore last decision if history exists
-            if st.session_state.decision_history:
-                st.session_state.last_decision = st.session_state.decision_history[-1]
-        else:
-            st.session_state.decision_history = []
+        st.session_state.decision_history = []
             
     if "adherence_score" not in st.session_state:
-        st.session_state.adherence_score = cached.get("adherence_score", 85) if cached else 85
+        st.session_state.adherence_score = 85
         
-    # Streak Logic
+    # Streak Logic (session-only)
     if "streak_count" not in st.session_state:
-        st.session_state.streak_count = cached.get("streak_count", 0) if cached else 0
-        st.session_state.last_active_date = cached.get("last_active_date") if cached else None
+        st.session_state.streak_count = 0
+        st.session_state.last_active_date = None
         
         # Calculate daily streak
         today_str = datetime.now().date().isoformat()
@@ -260,16 +219,8 @@ def init_session_state():
     if "simulation_results" not in st.session_state:
         st.session_state.simulation_results = None
     
-    # Load onboarding data
-    if "onboarding_complete" not in st.session_state:
-        if cached and cached.get("onboarding_complete"):
-            st.session_state.onboarding_complete = True
-            st.session_state.user_name = cached.get("user_name", "")
-            st.session_state.user_age = cached.get("user_age", 25)
-            st.session_state.user_goal = cached.get("user_goal", "")
-            st.session_state.onboarding_step = 5  # Skip onboarding
-        else:
-            st.session_state.onboarding_complete = False
+    # Load onboarding data (session-only)\n    if "onboarding_complete" not in st.session_state:\n        st.session_state.onboarding_complete = False
+
             
     if "onboarding_step" not in st.session_state:
         st.session_state.onboarding_step = 1
