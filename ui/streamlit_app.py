@@ -2139,13 +2139,7 @@ def render_onboarding():
         """, unsafe_allow_html=True)
         
         if st.button("✨ Enter Equilibra", key="step4_finish", use_container_width=True, type="primary"):
-            # Save user data to cache
-            save_user_cache({
-                "onboarding_complete": True,
-                "user_name": st.session_state.user_name,
-                "user_age": st.session_state.user_age,
-                "user_goal": st.session_state.user_goal
-            })
+            # Mark onboarding as complete (session-only)
             st.session_state.onboarding_complete = True
             st.rerun()
         
