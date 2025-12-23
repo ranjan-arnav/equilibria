@@ -65,60 +65,50 @@ st.set_page_config(
         '''
     }
 )
-# User data persistence - Browser cookies (per-device, no cross-user issues)
+# User data persistence - Session-specific files (best of both worlds)
 import json
 import base64
+import hashlib
+import uuid
 
-def save_to_cookie(data: dict):
-    """Save user data to browser cookie."""
+def get_session_id():
+    """Get or create a unique session ID for this browser."""
+    if "session_id" not in st.session_state:
+        # Generate unique ID for this session
+        st.session_state.session_id = str(uuid.uuid4())
+    return st.session_state.session_id
+
+def get_cache_file():
+    """Get the cache file path for this session."""
+    session_id = get_session_id()
+    # Use hash of session ID for filename
+    filename = hashlib.md5(session_id.encode()).hexdigest()
+    cache_dir = os.path.join(os.path.dirname(__file__), ".cache")
+    os.makedirs(cache_dir, exist_ok=True)
+    return os.path.join(cache_dir, f"{filename}.json")
+
+def save_to_cache(data: dict):
+    """Save user data to session-specific cache file."""
     try:
-        # Encode data as base64 to handle special characters
-        json_str = json.dumps(data)
-        encoded = base64.b64encode(json_str.encode()).decode()
-        
-        # Set cookie via JavaScript (expires in 30 days)
-        st.markdown(f"""
-        <script>
-        document.cookie = "equilibra_user={encoded}; max-age=2592000; path=/; SameSite=Lax";
-        </script>
-        """, unsafe_allow_html=True)
+        cache_file = get_cache_file()
+        with open(cache_file, 'w') as f:
+            json.dump(data, f)
     except:
         pass
 
-def load_from_cookie():
-    """Load user data from browser cookie."""
+def load_from_cache():
+    """Load user data from session-specific cache file."""
     try:
-        # Read cookie via JavaScript and pass to Streamlit
-        cookie_script = """
-        <script>
-        function getCookie(name) {{
-            const value = `; ${{document.cookie}}`;
-            const parts = value.split(`; ${{name}}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
-            return null;
-        }}
-        
-        const userData = getCookie('equilibra_user');
-        if (userData) {{
-            // Store in a hidden div that Streamlit can read
-            const div = document.createElement('div');
-            div.id = 'cookie_data';
-            div.style.display = 'none';
-            div.textContent = userData;
-            document.body.appendChild(div);
-        }}
-        </script>
-        """
-        st.markdown(cookie_script, unsafe_allow_html=True)
-        
-        # Note: This is a simplified version. Full implementation would need
-        # streamlit-js-eval or similar package to read JS values in Python
-        return None
+        cache_file = get_cache_file()
+        if os.path.exists(cache_file):
+            with open(cache_file, 'r') as f:
+                return json.load(f)
     except:
-        return None
+        pass
+    return None
 
 def persist_session_data():
-    """Helper to save all persistent session data to browser cookie."""
+    """Helper to save all persistent session data to cache."""
     if "onboarding_complete" in st.session_state and st.session_state.onboarding_complete:
         data = {
             "onboarding_complete": True,
@@ -126,7 +116,7 @@ def persist_session_data():
             "user_age": st.session_state.get("user_age", 25),
             "user_goal": st.session_state.get("user_goal", ""),
         }
-        save_to_cookie(data)
+        save_to_cache(data)
 
 def deserialize_decisions(data_list):
     """Reconstruct TradeOffDecision objects from JSON dicts."""
@@ -200,7 +190,10 @@ def deserialize_decisions(data_list):
 
 # Initialize session state
 def init_session_state():
-    # Session-based storage only (no file cache)
+    # Session-based storage with file cache per session
+    
+    # Load cached data for this session
+    cached = load_from_cache()
     
     if "orchestrator" not in st.session_state:
         st.session_state.orchestrator = None
@@ -272,9 +265,15 @@ def init_session_state():
     if "simulation_results" not in st.session_state:
         st.session_state.simulation_results = None
     
-    # Load onboarding data (session-only)
+    # Load onboarding data from cache
     if "onboarding_complete" not in st.session_state:
-        st.session_state.onboarding_complete = False
+        if cached and cached.get("onboarding_complete"):
+            st.session_state.onboarding_complete = True
+            st.session_state.user_name = cached.get("user_name", "")
+            st.session_state.user_age = cached.get("user_age", 25)
+            st.session_state.user_goal = cached.get("user_goal", "")
+        else:
+            st.session_state.onboarding_complete = False
             
     if "onboarding_step" not in st.session_state:
         st.session_state.onboarding_step = 1
