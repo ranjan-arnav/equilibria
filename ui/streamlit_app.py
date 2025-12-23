@@ -616,6 +616,17 @@ def get_theme_css():
 st.markdown(get_theme_css(), unsafe_allow_html=True)
 
 
+# --- Scenario Configuration (Single Source of Truth) ---
+SCENARIO_CONFIG = {
+    "Custom": {"sleep": 7.0, "energy": 6, "stress": "Medium", "time": 2.0},
+    "😴 Exhausted": {"sleep": 4.5, "energy": 2, "stress": "High", "time": 1.0},
+    "😰 Stressed": {"sleep": 6.0, "energy": 4, "stress": "High", "time": 1.5},
+    "😊 Balanced": {"sleep": 7.0, "energy": 6, "stress": "Medium", "time": 2.5},
+    "⚡ Energized": {"sleep": 8.0, "energy": 8, "stress": "Low", "time": 3.0},
+    "🔥 Peak": {"sleep": 8.5, "energy": 10, "stress": "Low", "time": 3.5},
+}
+
+
 # Feeling Picker - Quick state presets
 def render_feeling_picker():
     """Render friendly scenario picker buttons that update sidebar sliders."""
@@ -636,25 +647,19 @@ def render_feeling_picker():
     # Feeling buttons in a row
     cols = st.columns(5)
     
-    # Define presets: (sleep, energy, stress, time)
-    presets = {
-        "😴 Exhausted": (4.5, 2, "high", 1.0),
-        "😰 Stressed": (6.0, 4, "high", 1.5),
-        "😊 Balanced": (7.0, 6, "medium", 2.5),
-        "⚡ Energized": (8.0, 8, "low", 3.0),
-        "🔥 Peak": (8.5, 10, "low", 3.5),
-    }
+    # Filter out "Custom" for buttons
+    button_scenarios = {k: v for k, v in SCENARIO_CONFIG.items() if k != "Custom"}
     
-    for idx, (label, (sleep, energy, stress, time)) in enumerate(presets.items()):
+    for idx, (label, values) in enumerate(button_scenarios.items()):
         with cols[idx]:
             if st.button(label, use_container_width=True, key=f"feeling_{idx}"):
-                # Set a flag that sidebar will check
-                st.session_state.feeling_preset = {
-                    "sleep": sleep,
-                    "energy": energy,
-                    "stress": stress,
-                    "time": time
-                }
+                # Update widget keys directly
+                st.session_state.sleep_slider = values["sleep"]
+                st.session_state.energy_slider = values["energy"]
+                st.session_state.stress_radio = values["stress"]
+                st.session_state.time_slider = values["time"]
+                # Also sync the dropdown
+                st.session_state.scenario_select = label
                 st.rerun()
 
 
@@ -695,83 +700,88 @@ def render_sidebar():
         
         st.markdown("### 📊 Today's Signals")
         
-        # Load Scenario dropdown
+        # Callback to sync sliders when dropdown changes
+        def sync_scenario_sliders():
+            scen = st.session_state.scenario_select
+            if scen in SCENARIO_CONFIG and scen != "Custom":
+                values = SCENARIO_CONFIG[scen]
+                st.session_state.sleep_slider = values["sleep"]
+                st.session_state.energy_slider = values["energy"]
+                st.session_state.stress_radio = values["stress"]
+                st.session_state.time_slider = values["time"]
+        
+        # Callback to set Custom mode when sliders change
+        def set_custom_scenario():
+            st.session_state.scenario_select = "Custom"
+
+        # Load Scenario dropdown - matches feeling picker
         st.markdown("**Load Scenario**")
         scenario = st.selectbox(
             "Load Scenario",
-            ["Custom", "Well Rested", "Sleep Deprived", "High Stress", "Time Crunch", "Recovery Day"],
-            label_visibility="collapsed"
+            list(SCENARIO_CONFIG.keys()),
+            label_visibility="collapsed",
+            key="scenario_select",
+            on_change=sync_scenario_sliders
         )
-        
-        # Apply scenario presets - check feeling picker first, then dropdown
-        if "scenario_sleep" in st.session_state:
-            # Values from feeling picker buttons take priority
-            default_sleep = st.session_state.scenario_sleep
-            default_energy = st.session_state.scenario_energy
-            default_stress = st.session_state.scenario_stress.lower()
-            default_time = st.session_state.scenario_time
-        elif scenario == "Well Rested":
-            default_sleep, default_energy, default_stress, default_time = 8.0, 8, "low", 3.0
-        elif scenario == "Sleep Deprived":
-            default_sleep, default_energy, default_stress, default_time = 4.5, 3, "high", 2.0
-        elif scenario == "High Stress":
-            default_sleep, default_energy, default_stress, default_time = 6.0, 5, "high", 1.5
-        elif scenario == "Time Crunch":
-            default_sleep, default_energy, default_stress, default_time = 7.0, 6, "medium", 0.5
-        elif scenario == "Recovery Day":
-            default_sleep, default_energy, default_stress, default_time = 9.0, 7, "low", 4.0
-        else:
-            default_sleep, default_energy, default_stress, default_time = 7.0, 6, "medium", 2.0
         
         st.markdown("---")
         
-        # Check if feeling picker set values
-        if "feeling_preset" in st.session_state:
-            preset = st.session_state.feeling_preset
-            default_sleep = preset["sleep"]
-            default_energy = preset["energy"]
-            default_stress = preset["stress"]
-            default_time = preset["time"]
-            # Clear the preset after using it
-            del st.session_state.feeling_preset
+        # Get defaults based on current scenario or fallback to Custom
+        defaults = SCENARIO_CONFIG.get(scenario, SCENARIO_CONFIG["Custom"])
+
         
         # Sleep slider
         st.markdown("🌙 **Sleep (hours)**")
         sleep_hours = st.slider(
-            "Sleep", 3.0, 10.0, default_sleep, 0.5,
+            "Sleep", 3.0, 10.0, 
+            st.session_state.get("sleep_slider", defaults["sleep"]), 
+            0.5,
             label_visibility="collapsed",
-            key="sleep_slider"
+            key="sleep_slider",
+            on_change=set_custom_scenario
         )
         
         # Energy slider
         st.markdown("⚡ **Energy Level**")
         energy_level = st.slider(
-            "Energy", 1, 10, default_energy,
+            "Energy", 1, 10, 
+            st.session_state.get("energy_slider", defaults["energy"]),
             label_visibility="collapsed",
-            key="energy_slider"
+            key="energy_slider",
+            on_change=set_custom_scenario
         )
         
         # Stress level radio
         st.markdown("😰 **Stress Level**")
-        stress_map = {"low": "Low", "medium": "Medium", "high": "High"}
-        stress_display = stress_map.get(default_stress, "Medium")
+        
+        # Ensure stress value matches radio options (Title Case)
+        current_stress = st.session_state.get("stress_radio", defaults["stress"])
+        # Map lowercase to Title Case just in case
+        stress_display_map = {"low": "Low", "medium": "Medium", "high": "High", "Low": "Low", "Medium": "Medium", "High": "High"}
+        current_stress = stress_display_map.get(current_stress, "Medium")
         
         stress_level = st.radio(
             "Stress",
             ["Low", "Medium", "High"],
-            index=["Low", "Medium", "High"].index(stress_display),
+            index=["Low", "Medium", "High"].index(current_stress),
             horizontal=True,
             label_visibility="collapsed",
-            key="stress_radio"
+            key="stress_radio",
+            on_change=set_custom_scenario
         )
         
         # Available time slider
         st.markdown("⏰ **Available Time (hours)**")
         time_available = st.slider(
-            "Time", 0.5, 4.0, default_time, 0.5,
+            "Time", 0.5, 4.0, 
+            st.session_state.get("time_slider", defaults["time"]), 
+            0.5,
             label_visibility="collapsed",
-            key="time_slider"
+            key="time_slider",
+            on_change=set_custom_scenario
         )
+        
+
         
         st.markdown("---")
         
