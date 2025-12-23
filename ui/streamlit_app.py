@@ -744,7 +744,12 @@ def render_sidebar():
         
         # Stress level radio
         st.markdown("😰 **Stress Level**")
-        stress_default = st.session_state.get("stress_radio", ["Low", "Medium", "High"][[\"low\", \"medium\", \"high\"].index(default_stress)])
+        # Get stress default - check session state first
+        if "stress_radio" in st.session_state:
+            stress_default = st.session_state.stress_radio
+        else:
+            stress_map = {"low": "Low", "medium": "Medium", "high": "High"}
+            stress_default = stress_map.get(default_stress, "Medium")
         stress_level = st.radio(
             "Stress",
             ["Low", "Medium", "High"],
