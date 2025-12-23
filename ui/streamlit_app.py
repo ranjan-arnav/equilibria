@@ -218,8 +218,9 @@ def init_session_state():
     if "simulation_results" not in st.session_state:
         st.session_state.simulation_results = None
     
-    # Load onboarding data (session-only)\n    if "onboarding_complete" not in st.session_state:\n        st.session_state.onboarding_complete = False
-
+    # Load onboarding data (session-only)
+    if "onboarding_complete" not in st.session_state:
+        st.session_state.onboarding_complete = False
             
     if "onboarding_step" not in st.session_state:
         st.session_state.onboarding_step = 1
