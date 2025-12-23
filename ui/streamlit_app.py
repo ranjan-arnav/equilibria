@@ -616,6 +616,46 @@ def get_theme_css():
 st.markdown(get_theme_css(), unsafe_allow_html=True)
 
 
+# Feeling Picker - Quick state presets
+def render_feeling_picker():
+    """Render friendly scenario picker buttons that update sidebar sliders."""
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%);
+        border: 1px solid rgba(249, 115, 22, 0.2);
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+    ">
+        <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px; color: #f97316;">
+            🔥 How are you feeling today?
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Feeling buttons in a row
+    cols = st.columns(5)
+    
+    # Define presets: (sleep, energy, stress, time)
+    presets = {
+        "😴 Exhausted": (4.5, 2, "HIGH", 1.0),
+        "😰 Stressed": (6.0, 4, "HIGH", 1.5),
+        "😊 Balanced": (7.0, 6, "MEDIUM", 2.5),
+        "⚡ Energized": (8.0, 8, "LOW", 3.0),
+        "🔥 Peak": (8.5, 10, "LOW", 3.5),
+    }
+    
+    for idx, (label, (sleep, energy, stress, time)) in enumerate(presets.items()):
+        with cols[idx]:
+            if st.button(label, use_container_width=True, key=f"feeling_{idx}"):
+                # Update session state variables that sidebar reads
+                st.session_state.scenario_sleep = sleep
+                st.session_state.scenario_energy = energy
+                st.session_state.scenario_stress = stress
+                st.session_state.scenario_time = time
+                st.rerun()
+
+
 # Sidebar - Today's Signals
 def render_sidebar():
     with st.sidebar:
@@ -2644,7 +2684,7 @@ def main():
     render_crisis_banner()
     
     # Render friendly scenario picker
-    # render_feeling_picker()  # TODO: Re-implement this function
+    render_feeling_picker()
     
     # Tab navigation
     tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
