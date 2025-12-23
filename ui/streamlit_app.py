@@ -2644,7 +2644,7 @@ def main():
     render_crisis_banner()
     
     # Render friendly scenario picker
-    render_feeling_picker()
+    # render_feeling_picker()  # TODO: Re-implement this function
     
     # Tab navigation
     tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
