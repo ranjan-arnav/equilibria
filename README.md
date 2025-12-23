@@ -87,6 +87,10 @@ pip install -r requirements.txt
 
 ### Step 3: Configure Environment Variables
 
+You can use either method:
+
+**Method 1: .env file (Recommended)**
+
 Create a `.env` file in the project root:
 
 ```bash
@@ -94,11 +98,27 @@ GROQ_API_KEY=your_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-To get a free Groq API key:
+**Method 2: Streamlit Secrets**
+
+Copy the example secrets file:
+
+```bash
+cp .streamlit/secrets.toml.example .streamlit/secrets.toml
+```
+
+Then edit `.streamlit/secrets.toml`:
+
+```toml
+GROQ_API_KEY = "your_api_key_here"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+```
+
+**Getting a Groq API Key:**
+
 1. Visit https://console.groq.com
 2. Sign up for a free account
 3. Generate an API key
-4. Copy it to your `.env` file
+4. Copy it to your `.env` or `secrets.toml` file
 
 ### Step 4: Run the Application
 

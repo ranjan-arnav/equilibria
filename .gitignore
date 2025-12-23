@@ -9,3 +9,4 @@ venv/
 dist/
 build/
 .user_cache.json
+.streamlit/secrets.toml
