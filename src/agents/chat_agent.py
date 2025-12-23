@@ -13,6 +13,7 @@ except ImportError:
     Groq = None
 
 from src.models import TradeOffDecision, HealthState
+from src.utils.audio_transcriber import AudioTranscriber
 
 
 class ConversationalAgent:
@@ -55,12 +56,17 @@ Current Context:
         self.current_state: Optional[HealthState] = None
         self.last_decision: Optional[TradeOffDecision] = None
         self.decision_history: list[TradeOffDecision] = []
+        self.user_profile: dict = {}
+        
+        # Audio
+        self.transcriber = AudioTranscriber(self.api_key)
     
     def update_context(
         self,
         state: Optional[HealthState] = None,
         decision: Optional[TradeOffDecision] = None,
-        history: Optional[list[TradeOffDecision]] = None
+        history: Optional[list[TradeOffDecision]] = None,
+        user_profile: Optional[dict] = None
     ):
         """Update the agent's context with latest data."""
         if state:
@@ -69,10 +75,20 @@ Current Context:
             self.last_decision = decision
         if history:
             self.decision_history = history
+        if user_profile:
+            self.user_profile = user_profile
     
+
     def _build_context(self) -> str:
         """Build context string for the LLM."""
         parts = []
+        
+        if self.user_profile:
+            parts.append(f"""User Profile:
+- Name: {self.user_profile.get('name', 'User')}
+- Age: {self.user_profile.get('age', 'N/A')}
+- Primary Goal: {self.user_profile.get('goal', 'N/A')}
+- Current Adherence: {self.user_profile.get('adherence', 'N/A')}%""")
         
         if self.current_state:
             parts.append(f"""Current State:
@@ -112,6 +128,10 @@ Recent History:
                 return self._template_response(user_message)
         else:
             return self._template_response(user_message)
+
+    def transcribe_audio(self, audio_file) -> Optional[str]:
+        """Transcribe audio input to text."""
+        return self.transcriber.transcribe(audio_file)
     
     def _llm_response(self, user_message: str) -> str:
         """Generate response using Groq LLM."""

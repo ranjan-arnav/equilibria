@@ -22,7 +22,7 @@ class GroqConfig:
             return None
         return cls(
             api_key=api_key,
-            model=os.getenv("GROQ_MODEL", "llama-3.1-70b-versatile")
+            model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
         )
 
 
