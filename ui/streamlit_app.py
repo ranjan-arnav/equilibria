@@ -72,11 +72,18 @@ import hashlib
 import uuid
 
 def get_session_id():
-    """Get or create a unique session ID for this browser."""
-    if "session_id" not in st.session_state:
-        # Generate unique ID for this session
-        st.session_state.session_id = str(uuid.uuid4())
-    return st.session_state.session_id
+    """Get or create a session ID using URL query params (persists across refreshes)."""
+    # Check if session_id is in URL query params
+    query_params = st.query_params
+    
+    if "sid" in query_params:
+        # Use existing session ID from URL
+        return query_params["sid"]
+    else:
+        # Generate new session ID and add to URL
+        new_sid = str(uuid.uuid4())[:8]  # Short ID
+        st.query_params["sid"] = new_sid
+        return new_sid
 
 def get_cache_file():
     """Get the cache file path for this session."""
@@ -265,24 +272,21 @@ def init_session_state():
     if "simulation_results" not in st.session_state:
         st.session_state.simulation_results = None
     
-    # Load onboarding data from cache
+    # Skip onboarding for hackathon - go straight to app
     if "onboarding_complete" not in st.session_state:
-        if cached and cached.get("onboarding_complete"):
-            st.session_state.onboarding_complete = True
-            st.session_state.user_name = cached.get("user_name", "")
-            st.session_state.user_age = cached.get("user_age", 25)
-            st.session_state.user_goal = cached.get("user_goal", "")
-        else:
-            st.session_state.onboarding_complete = False
+        st.session_state.onboarding_complete = True  # Always complete
+        st.session_state.user_name = "Demo User"
+        st.session_state.user_age = 25
+        st.session_state.user_goal = "Improve overall health"
             
     if "onboarding_step" not in st.session_state:
         st.session_state.onboarding_step = 1
     if "user_name" not in st.session_state:
-        st.session_state.user_name = ""
+        st.session_state.user_name = "Demo User"
     if "user_age" not in st.session_state:
         st.session_state.user_age = 25
     if "user_goal" not in st.session_state:
-        st.session_state.user_goal = ""
+        st.session_state.user_goal = "Improve overall health"
 
 
 init_session_state()
@@ -615,6 +619,38 @@ st.markdown(get_theme_css(), unsafe_allow_html=True)
 # Sidebar - Today's Signals
 def render_sidebar():
     with st.sidebar:
+        st.markdown("### 👤 Your Profile")
+        
+        # Age slider
+        st.markdown("**Age**")
+        age = st.slider(
+            "Age", 18, 80, st.session_state.user_age,
+            label_visibility="collapsed",
+            key="age_slider"
+        )
+        st.session_state.user_age = age
+        
+        # Goal selection
+        st.markdown("**Primary Goal**")
+        goals = [
+            "Improve overall health",
+            "Lose weight",
+            "Build muscle",
+            "Reduce stress",
+            "Better sleep",
+            "Increase energy"
+        ]
+        goal = st.selectbox(
+            "Goal",
+            goals,
+            index=goals.index(st.session_state.user_goal) if st.session_state.user_goal in goals else 0,
+            label_visibility="collapsed",
+            key="goal_select"
+        )
+        st.session_state.user_goal = goal
+        
+        st.markdown("---")
+        
         st.markdown("### 📊 Today's Signals")
         
         # Load Scenario dropdown
@@ -1577,25 +1613,106 @@ def render_chat():
         else:
             st.chat_message("assistant").markdown(msg["content"])
     
-    # Voice input
-    audio_val = st.audio_input("Record voice message")
+    # Voice input with improved error handling
+    st.markdown("**🎙️ Voice Message**")
+    audio_val = st.audio_input("Record voice message", label_visibility="collapsed")
+    
     if audio_val:
-        # Generate ID based on size to prevent re-processing on rerun
-        audio_id = f"{audio_val.getbuffer().nbytes}"
+        if st.button("📤 Send Voice Message", type="primary", use_container_width=True, key="send_voice"):
+            with st.spinner("🎙️ Transcribing..."):
+                try:
+                    # Get audio bytes
+                    audio_bytes = audio_val.getvalue()
+                    
+                    # Try transcription
+                    transcript = st.session_state.chat_agent.transcribe_audio(audio_val)
+                    
+                    if transcript and len(transcript.strip()) > 0:
+                        # Add user message
+                        st.session_state.chat_history.append({"role": "user", "content": f"🎤 {transcript}"})
+                        
+                        # Get AI response
+                        response = st.session_state.chat_agent.chat(transcript)
+                        st.session_state.chat_history.append({"role": "assistant", "content": response})
+                        
+                        # Generate voice response using Groq PlayAI TTS
+                        try:
+                            from groq import Groq
+                            import io
+                            
+                            client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+                            
+                            # Generate TTS audio using Groq's playai-tts
+                            tts_response = client.audio.speech.create(
+                                model="playai-tts",
+                                voice="Fritz-PlayAI",
+                                input=response[:1000],
+                                response_format="wav"
+                            )
+                            
+                            # The response is a BinaryAPIResponse, read it as bytes
+                            audio_bytes = tts_response.read()
+                            
+                            # Save audio to session state
+                            st.session_state.tts_audio_data = audio_bytes
+                            st.session_state.show_tts_player = True
+                            
+                        except Exception as tts_error:
+                            error_msg = str(tts_error)
+                            
+                            # Check if it's the terms acceptance error
+                            if "model_terms_required" in error_msg:
+                                st.warning("⚠️ PlayAI TTS requires terms acceptance")
+                                st.info("📝 Please accept terms at: https://console.groq.com/playground?model=playai-tts")
+                                st.info("💡 Using browser TTS as fallback...")
+                            else:
+                                st.warning(f"⚠️ TTS failed: {error_msg}")
+                            
+                            # Fallback to browser TTS
+                            st.session_state.last_text_for_speech = response
+                            st.session_state.should_speak = True
+                        
+                        persist_session_data()
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Transcription returned empty")
+                        st.info("Audio might be unclear. Try speaking louder or use text input below.")
+                        
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)}")
+                    st.info("💬 Please use text chat below")
+    
+    # Play Groq TTS audio response
+    if st.session_state.get("show_tts_player", False) and st.session_state.get("tts_audio_data"):
+        st.markdown("**🔊 AI Voice Response (PlayAI)**")
+        st.audio(st.session_state.tts_audio_data, format="audio/wav")
         
-        if "last_audio_id" not in st.session_state or st.session_state.last_audio_id != audio_id:
-             st.session_state.last_audio_id = audio_id
-             
-             with st.spinner("🎙️ Transcribing..."):
-                 transcript = st.session_state.chat_agent.transcribe_audio(audio_val)
-                 
-             if transcript:
-                st.session_state.chat_history.append({"role": "user", "content": transcript})
-                
-                response = st.session_state.chat_agent.chat(transcript)
-                st.session_state.chat_history.append({"role": "assistant", "content": response})
-                persist_session_data()
-                st.rerun()
+        if st.button("✅ Clear Audio", key="clear_tts"):
+            st.session_state.show_tts_player = False
+            st.session_state.tts_audio_data = None
+            st.rerun()
+    
+    # Fallback: Browser TTS if Groq TTS unavailable
+    if st.session_state.get("should_speak", False) and st.session_state.get("last_text_for_speech"):
+        text_to_speak = st.session_state.last_text_for_speech[:500]
+        safe_text = text_to_speak.replace('"', '\\"').replace("'", "\\'").replace("\n", " ")
+        
+        st.markdown("**🔊 AI Speaking (Browser Voice)...**")
+        st.markdown(f"""
+        <script>
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("{safe_text}");
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+        </script>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔇 Stop Speaking", key="stop_browser_tts"):
+            st.markdown("<script>window.speechSynthesis.cancel();</script>", unsafe_allow_html=True)
+            st.session_state.should_speak = False
+            st.session_state.last_text_for_speech = None
+            st.rerun()
 
     # Chat input
     if prompt := st.chat_input("Ask me anything about your health decisions..."):
