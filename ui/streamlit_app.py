@@ -65,14 +65,68 @@ st.set_page_config(
         '''
     }
 )
-# User data persistence - Session-based only (no shared file)
+# User data persistence - Browser cookies (per-device, no cross-user issues)
 import json
+import base64
+
+def save_to_cookie(data: dict):
+    """Save user data to browser cookie."""
+    try:
+        # Encode data as base64 to handle special characters
+        json_str = json.dumps(data)
+        encoded = base64.b64encode(json_str.encode()).decode()
+        
+        # Set cookie via JavaScript (expires in 30 days)
+        st.markdown(f"""
+        <script>
+        document.cookie = "equilibra_user={encoded}; max-age=2592000; path=/; SameSite=Lax";
+        </script>
+        """, unsafe_allow_html=True)
+    except:
+        pass
+
+def load_from_cookie():
+    """Load user data from browser cookie."""
+    try:
+        # Read cookie via JavaScript and pass to Streamlit
+        cookie_script = """
+        <script>
+        function getCookie(name) {{
+            const value = `; ${{document.cookie}}`;
+            const parts = value.split(`; ${{name}}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }}
+        
+        const userData = getCookie('equilibra_user');
+        if (userData) {{
+            // Store in a hidden div that Streamlit can read
+            const div = document.createElement('div');
+            div.id = 'cookie_data';
+            div.style.display = 'none';
+            div.textContent = userData;
+            document.body.appendChild(div);
+        }}
+        </script>
+        """
+        st.markdown(cookie_script, unsafe_allow_html=True)
+        
+        # Note: This is a simplified version. Full implementation would need
+        # streamlit-js-eval or similar package to read JS values in Python
+        return None
+    except:
+        return None
 
 def persist_session_data():
-    """Helper to save all persistent session data."""
-    # Session data is now only stored in st.session_state
-    # No file persistence to avoid cross-user contamination
-    pass
+    """Helper to save all persistent session data to browser cookie."""
+    if "onboarding_complete" in st.session_state and st.session_state.onboarding_complete:
+        data = {
+            "onboarding_complete": True,
+            "user_name": st.session_state.get("user_name", ""),
+            "user_age": st.session_state.get("user_age", 25),
+            "user_goal": st.session_state.get("user_goal", ""),
+        }
+        save_to_cookie(data)
 
 def deserialize_decisions(data_list):
     """Reconstruct TradeOffDecision objects from JSON dicts."""
@@ -2139,8 +2193,9 @@ def render_onboarding():
         """, unsafe_allow_html=True)
         
         if st.button("✨ Enter Equilibra", key="step4_finish", use_container_width=True, type="primary"):
-            # Mark onboarding as complete (session-only)
+            # Mark onboarding as complete and save to cookie
             st.session_state.onboarding_complete = True
+            persist_session_data()  # Save to browser cookie
             st.rerun()
         
         st.markdown('<div class="footer-badge">🏆 Built for HYD-300 Hackathon</div>', unsafe_allow_html=True)
