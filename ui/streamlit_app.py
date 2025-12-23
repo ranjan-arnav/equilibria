@@ -636,23 +636,24 @@ def render_feeling_picker():
     # Feeling buttons in a row
     cols = st.columns(5)
     
-    # Define presets: (sleep, energy, stress, time)
+    # Define presets: (sleep, energy, stress_index, time)
+    # stress_index: 0=Low, 1=Medium, 2=High
     presets = {
-        "😴 Exhausted": (4.5, 2, "HIGH", 1.0),
-        "😰 Stressed": (6.0, 4, "HIGH", 1.5),
-        "😊 Balanced": (7.0, 6, "MEDIUM", 2.5),
-        "⚡ Energized": (8.0, 8, "LOW", 3.0),
-        "🔥 Peak": (8.5, 10, "LOW", 3.5),
+        "😴 Exhausted": (4.5, 2, 2, 1.0),  # High stress
+        "😰 Stressed": (6.0, 4, 2, 1.5),   # High stress
+        "😊 Balanced": (7.0, 6, 1, 2.5),   # Medium stress
+        "⚡ Energized": (8.0, 8, 0, 3.0),   # Low stress
+        "🔥 Peak": (8.5, 10, 0, 3.5),      # Low stress
     }
     
-    for idx, (label, (sleep, energy, stress, time)) in enumerate(presets.items()):
+    for idx, (label, (sleep, energy, stress_idx, time)) in enumerate(presets.items()):
         with cols[idx]:
             if st.button(label, use_container_width=True, key=f"feeling_{idx}"):
-                # Update session state variables that sidebar reads
-                st.session_state.scenario_sleep = sleep
-                st.session_state.scenario_energy = energy
-                st.session_state.scenario_stress = stress
-                st.session_state.scenario_time = time
+                # Update the actual slider keys that Streamlit uses
+                st.session_state.sleep_slider = sleep
+                st.session_state.energy_slider = energy
+                st.session_state.stress_radio = ["Low", "Medium", "High"][stress_idx]
+                st.session_state.time_slider = time
                 st.rerun()
 
 
