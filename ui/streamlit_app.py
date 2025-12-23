@@ -636,24 +636,23 @@ def render_feeling_picker():
     # Feeling buttons in a row
     cols = st.columns(5)
     
-    # Define presets: (sleep, energy, stress_index, time)
-    # stress_index: 0=Low, 1=Medium, 2=High
+    # Define presets: (sleep, energy, stress, time)
     presets = {
-        "😴 Exhausted": (4.5, 2, 2, 1.0),  # High stress
-        "😰 Stressed": (6.0, 4, 2, 1.5),   # High stress
-        "😊 Balanced": (7.0, 6, 1, 2.5),   # Medium stress
-        "⚡ Energized": (8.0, 8, 0, 3.0),   # Low stress
-        "🔥 Peak": (8.5, 10, 0, 3.5),      # Low stress
+        "😴 Exhausted": (4.5, 2, "high", 1.0),
+        "😰 Stressed": (6.0, 4, "high", 1.5),
+        "😊 Balanced": (7.0, 6, "medium", 2.5),
+        "⚡ Energized": (8.0, 8, "low", 3.0),
+        "🔥 Peak": (8.5, 10, "low", 3.5),
     }
     
-    for idx, (label, (sleep, energy, stress_idx, time)) in enumerate(presets.items()):
+    for idx, (label, (sleep, energy, stress, time)) in enumerate(presets.items()):
         with cols[idx]:
             if st.button(label, use_container_width=True, key=f"feeling_{idx}"):
-                # Update the actual slider keys that Streamlit uses
-                st.session_state.sleep_slider = sleep
-                st.session_state.energy_slider = energy
-                st.session_state.stress_radio = ["Low", "Medium", "High"][stress_idx]
-                st.session_state.time_slider = time
+                # Update session state variables directly
+                st.session_state.current_sleep = sleep
+                st.session_state.current_energy = energy
+                st.session_state.current_stress = stress
+                st.session_state.current_time = time
                 st.rerun()
 
 
@@ -724,49 +723,54 @@ def render_sidebar():
         
         st.markdown("---")
         
-        # Sleep slider - check if feeling picker set a value
+        # Initialize slider values in session state if not present
+        if "current_sleep" not in st.session_state:
+            st.session_state.current_sleep = default_sleep
+        if "current_energy" not in st.session_state:
+            st.session_state.current_energy = default_energy
+        if "current_stress" not in st.session_state:
+            st.session_state.current_stress = default_stress
+        if "current_time" not in st.session_state:
+            st.session_state.current_time = default_time
+        
+        # Sleep slider - no key, uses session state
         st.markdown("🌙 **Sleep (hours)**")
-        sleep_default = st.session_state.get("sleep_slider", default_sleep)
         sleep_hours = st.slider(
-            "Sleep", 3.0, 10.0, sleep_default, 0.5,
-            label_visibility="collapsed",
-            key="sleep_slider"
+            "Sleep", 3.0, 10.0, st.session_state.current_sleep, 0.5,
+            label_visibility="collapsed"
         )
+        st.session_state.current_sleep = sleep_hours
         
         # Energy slider
         st.markdown("⚡ **Energy Level**")
-        energy_default = st.session_state.get("energy_slider", default_energy)
         energy_level = st.slider(
-            "Energy", 1, 10, energy_default,
-            label_visibility="collapsed",
-            key="energy_slider"
+            "Energy", 1, 10, st.session_state.current_energy,
+            label_visibility="collapsed"
         )
+        st.session_state.current_energy = energy_level
         
         # Stress level radio
         st.markdown("😰 **Stress Level**")
-        # Get stress default - check session state first
-        if "stress_radio" in st.session_state:
-            stress_default = st.session_state.stress_radio
-        else:
-            stress_map = {"low": "Low", "medium": "Medium", "high": "High"}
-            stress_default = stress_map.get(default_stress, "Medium")
+        stress_options = ["Low", "Medium", "High"]
+        stress_map = {"low": "Low", "medium": "Medium", "high": "High"}
+        current_stress_display = stress_map.get(st.session_state.current_stress, "Medium")
+        
         stress_level = st.radio(
             "Stress",
-            ["Low", "Medium", "High"],
-            index=["Low", "Medium", "High"].index(stress_default),
+            stress_options,
+            index=stress_options.index(current_stress_display),
             horizontal=True,
-            label_visibility="collapsed",
-            key="stress_radio"
+            label_visibility="collapsed"
         )
+        st.session_state.current_stress = stress_level.lower()
         
         # Available time slider
         st.markdown("⏰ **Available Time (hours)**")
-        time_default = st.session_state.get("time_slider", default_time)
         time_available = st.slider(
-            "Time", 0.5, 4.0, time_default, 0.5,
-            label_visibility="collapsed",
-            key="time_slider"
+            "Time", 0.5, 4.0, st.session_state.current_time, 0.5,
+            label_visibility="collapsed"
         )
+        st.session_state.current_time = time_available
         
         st.markdown("---")
         
