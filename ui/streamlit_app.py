@@ -724,28 +724,31 @@ def render_sidebar():
         
         st.markdown("---")
         
-        # Sleep slider
+        # Sleep slider - check if feeling picker set a value
         st.markdown("🌙 **Sleep (hours)**")
+        sleep_default = st.session_state.get("sleep_slider", default_sleep)
         sleep_hours = st.slider(
-            "Sleep", 3.0, 10.0, default_sleep, 0.5,
+            "Sleep", 3.0, 10.0, sleep_default, 0.5,
             label_visibility="collapsed",
             key="sleep_slider"
         )
         
         # Energy slider
         st.markdown("⚡ **Energy Level**")
+        energy_default = st.session_state.get("energy_slider", default_energy)
         energy_level = st.slider(
-            "Energy", 1, 10, default_energy,
+            "Energy", 1, 10, energy_default,
             label_visibility="collapsed",
             key="energy_slider"
         )
         
         # Stress level radio
         st.markdown("😰 **Stress Level**")
+        stress_default = st.session_state.get("stress_radio", ["Low", "Medium", "High"][[\"low\", \"medium\", \"high\"].index(default_stress)])
         stress_level = st.radio(
             "Stress",
             ["Low", "Medium", "High"],
-            index=["low", "medium", "high"].index(default_stress),
+            index=["Low", "Medium", "High"].index(stress_default),
             horizontal=True,
             label_visibility="collapsed",
             key="stress_radio"
@@ -753,8 +756,9 @@ def render_sidebar():
         
         # Available time slider
         st.markdown("⏰ **Available Time (hours)**")
+        time_default = st.session_state.get("time_slider", default_time)
         time_available = st.slider(
-            "Time", 0.5, 4.0, default_time, 0.5,
+            "Time", 0.5, 4.0, time_default, 0.5,
             label_visibility="collapsed",
             key="time_slider"
         )
