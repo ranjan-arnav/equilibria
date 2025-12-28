@@ -1,341 +1,320 @@
 # Equilibra - AI Health Balance System
 
-**Professional Multi-Agent System for Burnout Prevention and Wellness Optimization**
+**Multi-Agent Agentic AI System for Burnout Prevention and Wellness Optimization**
 
 Built for the Innov-AI-tion Healthcare & Fitness Hackathon
 
 ---
 
-## Overview
+## 🌟 Overview
 
-Equilibra is an advanced agentic AI system that prevents burnout through multi-agent collaboration and temporal reasoning. Unlike traditional health trackers that simply log data, Equilibra actively deliberates, predicts crises, and intervenes before problems occur.
+Equilibra is an advanced **agentic AI system** that prevents burnout through multi-agent collaboration, LLM-powered reasoning, and temporal analysis. Unlike traditional health trackers that simply log data, Equilibra actively deliberates, predicts crises, and intervenes before problems occur.
 
 ### Key Features
 
-- **Multi-Agent Health Council**: 4 specialized AI agents (Sleep Specialist, Performance Coach, Wellness Guardian, Future Self) collaborate to make decisions
-- **Temporal Reasoning Engine**: Analyzes past patterns, present context, and future trajectories to provide proactive guidance
-- **Predictive Crisis Mode**: Forecasts burnout 3-7 days in advance and automatically activates protective measures
-- **Voice Interaction**: Speak to the AI using voice input powered by Groq Whisper
-- **Gamification**: Daily streak tracking and achievement system
-- **Transparent AI**: See exactly how agents vote and why they reach consensus
+| Feature | Description |
+|---------|-------------|
+| 🤖 **Multi-Agent Health Council** | 4 specialized AI agents collaborate via LLM to make decisions |
+| 🛡️ **Circuit Breaker** | Automatically blocks high-intensity activities when safety thresholds are exceeded |
+| 📋 **Dynamic Task Generation** | LLM generates personalized daily tasks based on your goal |
+| 🎯 **Goal Negotiator** | AI evaluates goal safety and suggests modifications |
+| 🔮 **Temporal Reasoning** | Analyzes past patterns, present context, and future trajectories |
+| ⚠️ **Crisis Prediction** | Forecasts burnout 3-7 days in advance |
+| 🎙️ **Voice Interaction** | Speak to the AI using Groq Whisper transcription |
+| 🎮 **Gamification** | Daily streaks and achievement system |
 
 ---
 
-## Problem Statement
+## 🏗️ System Architecture
 
-Modern professionals face chronic stress and burnout due to competing demands across work, fitness, sleep, and personal life. Traditional health apps are reactive - they track what happened but don't prevent problems. Equilibra is proactive - it predicts crises and intervenes autonomously.
-
-### Target Users
-
-- Professionals managing multiple health domains
-- Individuals at risk of burnout
-- Anyone seeking data-driven wellness optimization
-
----
-
-## System Architecture
-
+```mermaid
+graph TB
+    subgraph "User Interface"
+        UI[Streamlit Dashboard]
+        Voice[Voice Input]
+    end
+    
+    subgraph "Agentic Layer"
+        GN[Goal Negotiator<br/>LLM-Powered Safety Check]
+        HC[Health Council<br/>4-Agent Deliberation]
+        CB[Circuit Breaker<br/>Automatic Safety Gate]
+    end
+    
+    subgraph "LLM Engine"
+        GROQ[Groq API<br/>llama-3.3-70b-versatile]
+    end
+    
+    subgraph "Core Agents"
+        SS[Sleep Specialist]
+        PC[Performance Coach]
+        WG[Wellness Guardian]
+        FS[Future Self]
+    end
+    
+    subgraph "Data Layer"
+        TG[Task Generator<br/>Dynamic LLM Tasks]
+        TR[Temporal Reasoner<br/>Pattern Analysis]
+        BP[Burnout Predictor<br/>Crisis Detection]
+    end
+    
+    UI --> GN
+    Voice --> UI
+    GN --> GROQ
+    GN --> TG
+    TG --> GROQ
+    HC --> SS & PC & WG & FS
+    HC --> GROQ
+    CB --> HC
+    TR --> BP
+    BP --> CB
 ```
-User Input
-    |
-    v
-Health Council (Multi-Agent Deliberation)
-    |-- Sleep Specialist Agent
-    |-- Performance Coach Agent
-    |-- Wellness Guardian Agent
-    |-- Future Self Agent
-    |
-    v
-Consensus Mechanism
-    |
-    v
-Temporal Reasoner
-    |-- Past: Pattern Detection
-    |-- Present: Risk Assessment
-    |-- Future: Outcome Projection
-    |
-    v
-Decision Engine + Crisis Detection
-    |
-    v
-User Dashboard (Transparent UI)
+
+### Agent Workflow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant GN as Goal Negotiator
+    participant LLM as Groq LLM
+    participant TG as Task Generator
+    participant HC as Health Council
+    participant CB as Circuit Breaker
+    participant UI as Dashboard
+    
+    U->>GN: Set health goal
+    GN->>LLM: Evaluate safety
+    LLM-->>GN: ACCEPTED/NEGOTIATE/REJECTED
+    GN-->>U: Show result + counter-proposal
+    
+    U->>TG: Generate daily tasks
+    TG->>LLM: Create personalized plan
+    LLM-->>TG: 4 domain-specific tasks
+    
+    U->>HC: Run agent decision
+    HC->>LLM: Multi-agent deliberation
+    LLM-->>HC: Agent votes + reasoning
+    HC->>CB: Check safety threshold
+    CB-->>UI: Block/Allow activities
 ```
 
 ---
 
-## Installation & Setup
+## 🔧 Installation & Setup
 
 ### Prerequisites
 
-- Python 3.10 or higher
-- pip (Python package manager)
-- Git
-- Groq API key (free tier available at https://console.groq.com)
+- Python 3.10+
+- Groq API key (free at https://console.groq.com)
 
-### Step 1: Clone the Repository
+### Quick Start
 
 ```bash
+# Clone repository
 git clone https://github.com/YOUR_USERNAME/equilibra.git
 cd equilibra
-```
 
-### Step 2: Install Dependencies
-
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### Step 3: Configure Environment Variables
+# Create .env file
+echo "GROQ_API_KEY=your_api_key_here" > .env
 
-You can use either method:
-
-**Method 1: .env file (Recommended)**
-
-Create a `.env` file in the project root:
-
-```bash
-GROQ_API_KEY=your_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-```
-
-**Method 2: Streamlit Secrets**
-
-Copy the example secrets file:
-
-```bash
-cp .streamlit/secrets.toml.example .streamlit/secrets.toml
-```
-
-Then edit `.streamlit/secrets.toml`:
-
-```toml
-GROQ_API_KEY = "your_api_key_here"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-```
-
-**Getting a Groq API Key:**
-
-1. Visit https://console.groq.com
-2. Sign up for a free account
-3. Generate an API key
-4. Copy it to your `.env` or `secrets.toml` file
-
-### Step 4: Run the Application
-
-```bash
+# Run application
 python -m streamlit run ui/streamlit_app.py
 ```
 
-The app will open in your browser at `http://localhost:8501`
+The app opens at `http://localhost:8501`
 
 ---
 
-## Usage Guide
+## 💡 Example Usage & Interaction Flows
 
-### First Time Setup
+### Flow 1: Goal Setting with AI Safety Check
 
-1. **Onboarding**: Complete the 4-step personalized onboarding
-   - Enter your name
-   - Set your age
-   - Choose your primary health goal
-   - Review your personalized welcome
+```
+User: "I want to lose 10kg in 2 weeks"
+                    ↓
+        Goal Negotiator (LLM)
+                    ↓
+Status: NEGOTIATE
+Counter-proposal: "Lose 10kg over 10 weeks (1kg/week)"
+Reasoning: "Rapid weight loss exceeds safe threshold of 1.2kg/week"
+Safety Score: 0.3
+```
 
-2. **Explore the Dashboard**: Navigate through the tabs
-   - **Home**: View your daily metrics and burnout risk
-   - **Council**: See multi-agent deliberation in action
-   - **Make Decision**: Run the decision engine
-   - **Chat**: Talk to the AI (text or voice)
-   - **History**: Review past decisions
+### Flow 2: Dynamic Task Generation
 
-### Making Your First Decision
+```
+User Goal: "Train for a marathon"
+                    ↓
+        Task Generator (LLM)
+                    ↓
+Generated Tasks:
+1. 🏋️ Long Distance Run (60min) - Fitness
+2. 🥗 Carbohydrate Loading (30min) - Nutrition  
+3. 😴 Active Recovery Stretching (20min) - Recovery
+4. 🧘 Mental Visualization (15min) - Mindfulness
+```
 
-1. Go to the **Make Decision** tab
-2. Adjust your current state in the sidebar:
-   - Sleep hours
-   - Energy level (1-10)
-   - Stress level (Low/Moderate/High)
-3. Click "Run Agent Decision"
-4. Review the recommendations
+### Flow 3: Circuit Breaker Activation
 
-### Using the Health Council
+```
+Current State:
+- Sleep: 4 hours ❌
+- Energy: 2/10 ❌
+- Stress: High ❌
+                    ↓
+        Health Council Deliberates
+                    ↓
+Sleep Specialist: SKIP (0.95 confidence)
+"Critical sleep debt. High-intensity exercise increases cortisol."
+                    ↓
+        Circuit Breaker ENGAGED
+                    ↓
+Result: Fitness task BLOCKED 🚫
+Recommendation: "Rest, light activity, or recovery today"
+```
 
-1. Make at least one decision first
-2. Go to the **Council** tab
-3. See how 4 agents voted:
-   - Each agent's recommendation (PROCEED/MODIFY/SKIP)
-   - Confidence scores
-   - Individual reasoning
-   - Final consensus
-4. Review temporal insights:
-   - Detected patterns from your history
-   - Current risk assessment
-   - Future projections with intervention windows
+### Flow 4: Multi-Agent Consensus
 
-### Voice Interaction
-
-1. Go to the **Chat** tab
-2. Click the microphone icon
-3. Speak your question
-4. The AI will transcribe and respond
+```
+Planned Activity: HIIT Workout
+User State: Moderate sleep, Low energy, High stress
+                    ↓
+        4 Agents Vote:
+        
+🛏️ Sleep Specialist: MODIFY (0.75)
+   "Suboptimal sleep. Lower intensity recommended."
+   
+📈 Performance Coach: PROCEED (0.6)
+   "Moderate energy. Maintain activities."
+   
+🧘 Wellness Guardian: SKIP (0.85)
+   "High stress. Additional load risks burnout."
+   
+🔮 Future Self: PROCEED (0.8)
+   "Good consistency. Your future self thanks you."
+                    ↓
+        Consensus: MODIFY (58%)
+        
+Final Decision: Reduce workout intensity
+```
 
 ---
 
-## Project Structure
+## ⚙️ System Assumptions
+
+### User Model
+- User provides honest self-reported data (sleep, energy, stress)
+- User has a primary health/fitness goal
+- User is not seeking medical diagnosis
+
+### Safety Thresholds
+| Metric | Safe | Caution | Critical |
+|--------|------|---------|----------|
+| Sleep | ≥7h | 6-7h | <6h |
+| Energy | ≥6/10 | 4-5/10 | <4/10 |
+| Stress | Low | Moderate | High |
+
+### LLM Behavior
+- Model: `llama-3.3-70b-versatile` via Groq
+- Response format: JSON for structured outputs
+- Fallback: Heuristic rules if LLM fails
+
+---
+
+## 🚧 Limitations
+
+### Technical Limitations
+| Limitation | Impact | Mitigation |
+|------------|--------|------------|
+| Synthetic wearable data | No real biometrics | Future: Oura/Whoop integration |
+| Groq free tier limits | Rate limiting possible | Graceful fallbacks implemented |
+| English only | Limited accessibility | Future: i18n support |
+| No persistent storage | Data lost on restart | Future: Database integration |
+
+### Scope Limitations
+- **Not medical advice**: System provides wellness suggestions, not diagnoses
+- **Self-reported bias**: Relies on user honesty
+- **Single user**: No multi-user support currently
+
+---
+
+## 🚀 Future Improvements
+
+### Short-Term (1-3 months)
+- [ ] Real wearable integration (Apple Health, Oura, Whoop)
+- [ ] Persistent user data storage
+- [ ] Push notifications for interventions
+- [ ] Mobile-responsive design
+
+### Medium-Term (3-6 months)
+- [ ] Proactive intervention system
+- [ ] Explainable AI decision trees
+- [ ] Social accountability features
+- [ ] Multi-language support
+
+### Long-Term (6-12 months)
+- [ ] Federated learning across users
+- [ ] Personalized agent weight tuning
+- [ ] Integration with calendar/productivity apps
+- [ ] Wearable-based real-time monitoring
+
+---
+
+## 📁 Project Structure
 
 ```
 equilibra/
-|-- src/
-|   |-- agents/
-|   |   |-- chat_agent.py          # Conversational AI
-|   |   |-- burnout_predictor.py   # Crisis forecasting
-|   |   |-- health_council.py      # Multi-agent system
-|   |   |-- temporal_reasoner.py   # Temporal analysis
-|   |-- core/
-|   |   |-- config.py               # Configuration
-|   |-- models/
-|   |   |-- decision.py             # Data models
-|   |   |-- user.py                 # User profiles
-|   |-- utils/
-|   |   |-- audio_transcriber.py    # Voice input
-|-- ui/
-|   |-- streamlit_app.py            # Main UI
-|-- requirements.txt                # Dependencies
-|-- .env                            # API keys (create this)
-|-- README.md                       # This file
+├── src/
+│   ├── agents/
+│   │   ├── health_council.py      # LLM-powered 4-agent deliberation
+│   │   ├── goal_negotiator.py     # LLM goal safety evaluation
+│   │   ├── chat_agent.py          # Conversational AI
+│   │   ├── burnout_predictor.py   # Crisis forecasting
+│   │   └── temporal_reasoner.py   # Pattern analysis
+│   ├── core/
+│   │   └── config.py              # Configuration
+│   ├── models/
+│   │   └── decision.py            # Data models
+│   └── main.py                    # Task generator + Orchestrator
+├── ui/
+│   └── streamlit_app.py           # Main dashboard
+├── .env                           # API keys (create this)
+├── requirements.txt               # Dependencies
+└── README.md                      # This file
 ```
 
 ---
 
-## Agentic Capabilities
+## 🏆 Hackathon Alignment
 
-### 1. Multi-Agent Collaboration
-
-Four specialized agents with distinct priorities:
-
-- **Sleep Specialist**: Prioritizes recovery (weights: Sleep 1.5x, Exercise 0.7x)
-- **Performance Coach**: Maximizes productivity (weights: Work 1.4x, Exercise 1.3x)
-- **Wellness Guardian**: Balances mental health (weights: Mindfulness 1.5x, Work 0.7x)
-- **Future Self**: Advocates for long-term habits (analyzes skip patterns)
-
-Agents vote independently, then reach consensus through weighted majority.
-
-### 2. Temporal Reasoning
-
-**Past Analysis**:
-- Detects day-of-week patterns (e.g., "Monday workout avoidance")
-- Identifies stress-triggered behaviors
-- Tracks sleep debt cascades
-
-**Present Assessment**:
-- Contextualizes current moment (day, time, similar past situations)
-- Calculates real-time risk score
-- Identifies active risk factors
-
-**Future Projection**:
-- Predicts outcomes across multiple timelines (24h, 1 week, 1 month)
-- Estimates probability and impact
-- Provides intervention windows
-
-### 3. Autonomous Decision-Making
-
-- **Goal-Oriented**: Aligns decisions with user's stated goals
-- **Constraint-Aware**: Respects biological limits (sleep, stress, energy)
-- **Adaptive**: Learns from user feedback and patterns
-- **Proactive**: Intervenes before crises occur
+| Criteria | Weight | Implementation |
+|----------|--------|----------------|
+| **Novelty & Creativity** | 30% | Multi-agent LLM collaboration, Circuit Breaker, Temporal reasoning |
+| **Agentic System Design** | 25% | 4 autonomous agents, goal-oriented behavior, proactive intervention |
+| **Implementation Quality** | 20% | Clean architecture, error handling, LLM fallbacks |
+| **Scope & Usefulness** | 15% | Real burnout prevention, practical constraints |
+| **Documentation** | 10% | Comprehensive README, architecture diagrams |
 
 ---
 
-## Technical Stack
-
-### Core Frameworks
-- **Streamlit**: Web UI framework
-- **LangChain**: LLM orchestration
-- **Groq**: Fast LLM inference (llama-3.3-70b-versatile)
-
-### AI/ML
-- **Multi-Agent System**: Custom implementation with consensus mechanism
-- **Temporal Reasoning**: Pattern detection and trajectory projection
-- **Burnout Prediction**: Risk scoring algorithm
-
-### Data & Visualization
-- **Plotly**: Interactive charts
-- **Pandas**: Data manipulation
-- **Pydantic**: Data validation
-
----
-
-## Limitations & Future Work
-
-### Current Limitations
-
-- **Non-Diagnostic**: Does not provide medical diagnosis or treatment
-- **Synthetic Data**: Uses simulated wearable data (real integration planned)
-- **English Only**: Currently supports English language only
-- **Free Tier API**: Limited to Groq free tier rate limits
-
-### Planned Enhancements
-
-- Real wearable device integration (Oura, Whoop, Apple Health)
-- Proactive intervention system with notifications
-- Explainable AI dashboard with decision trees
-- Dynamic goal negotiation
-- Multi-language support
-
----
-
-## Evaluation Criteria Alignment
-
-This project was designed to excel across all hackathon evaluation dimensions:
-
-**Novelty & Creativity (30%)**
-- Multi-agent collaboration (unique in health domain)
-- Temporal reasoning across three time dimensions
-- Transparent deliberation process
-
-**Agentic System Design (25%)**
-- Autonomous decision-making with agent voting
-- Multi-step planning via temporal projections
-- Goal-oriented behavior and adaptation
-
-**Implementation Quality (20%)**
-- Clean separation of concerns
-- Robust error handling
-- Reproducible setup with clear documentation
-
-**Scope & Usefulness (15%)**
-- Addresses real burnout prevention problem
-- Practical constraints (API limits, ethical boundaries)
-- Immediate real-world applicability
-
-**Documentation & Presentation (10%)**
-- Comprehensive README
-- Transparent AI reasoning
-- Clear architecture diagrams
-
----
-
-## License
+## 📜 License
 
 MIT License - See LICENSE file for details
 
 ---
 
-## Acknowledgments
+## 🙏 Acknowledgments
+
+- **Groq** - Fast LLM inference
+- **Streamlit** - UI framework
+- **LangChain** - Agent orchestration patterns
 
 Built for the Innov-AI-tion Healthcare & Fitness Hackathon
 
-**Technologies Used**:
-- Groq (LLM inference)
-- Streamlit (UI framework)
-- LangChain (agent orchestration)
-- Python 3.13
-
 ---
 
-## Contact
+## 📞 Contact
 
 For questions or feedback, please open an issue on GitHub.
-
-**Demo Video**: [Link to be added]
-
-**Live Demo**: Run locally following setup instructions above

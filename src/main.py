@@ -3,6 +3,14 @@ HTPA Main Orchestrator - Coordinates all agents for decision-making.
 """
 from datetime import datetime
 from typing import Optional
+import os
+from dotenv import load_dotenv
+load_dotenv() # Force load .env
+
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
 from src.models import (
     UserProfile, HealthState, WearableData, StressLevel,
@@ -11,6 +19,50 @@ from src.models import (
 from src.agents import StateAnalyzer, ConstraintEvaluator, TradeOffEngine, PlanAdjuster
 from src.data import SyntheticDataGenerator, CSVDataLoader, HistoryTracker
 from src.core import ReasoningLogger, get_llm_generator, LLMReasoningGenerator
+
+
+def generate_daily_schedule_llm(user_goal: str = "") -> list[dict]:
+    """Generate a full day schedule using LLM based on user goal."""
+    api_key = os.getenv("GROQ_API_KEY")
+    
+    if not user_goal or not api_key or not Groq:
+        # Fallback to default schedule
+        return [
+            {"time": "6:30", "title": "Morning Workout", "type": "high_intensity", "icon": "🏋️"},
+            {"time": "8:00", "title": "Standup", "type": "work", "icon": "💼"},
+            {"time": "12:00", "title": "Lunch Walk", "type": "recovery", "icon": "🚶"},
+            {"time": "3:00", "title": "Deep Work", "type": "cognitive", "icon": "🧠"},
+            {"time": "6:00", "title": "Evening Activity", "type": "high_intensity", "icon": "🏃"},
+            {"time": "9:00", "title": "Wind-Down", "type": "recovery", "icon": "🌙"},
+        ]
+    
+    try:
+        client = Groq(api_key=api_key)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": """Generate a daily schedule for someone with this goal.
+Output STRICT JSON:
+{"schedule": [
+  {"time": "HH:MM", "title": "Activity", "type": "high_intensity|work|recovery|cognitive", "icon": "emoji"}
+]}
+Include 6 items spanning 6AM-10PM. Types: high_intensity (exercise), work (job), recovery (rest/walk), cognitive (focus)."""},
+                {"role": "user", "content": f"Goal: {user_goal}"}
+            ],
+            response_format={"type": "json_object"}
+        )
+        import json
+        data = json.loads(response.choices[0].message.content)
+        return data.get("schedule", [])[:6]
+    except:
+        return [
+            {"time": "6:30", "title": "Morning Workout", "type": "high_intensity", "icon": "🏋️"},
+            {"time": "8:00", "title": "Standup", "type": "work", "icon": "💼"},
+            {"time": "12:00", "title": "Lunch Walk", "type": "recovery", "icon": "🚶"},
+            {"time": "3:00", "title": "Deep Work", "type": "cognitive", "icon": "🧠"},
+            {"time": "6:00", "title": "Evening Activity", "type": "high_intensity", "icon": "🏃"},
+            {"time": "9:00", "title": "Wind-Down", "type": "recovery", "icon": "🌙"},
+        ]
 
 
 class HTPAOrchestrator:
@@ -154,16 +206,91 @@ class HTPAOrchestrator:
         return self.logger.get_reasoning_summary()
 
 
-def create_sample_planned_tasks() -> list[PlannedTask]:
-    """Create a sample set of planned tasks for demo."""
-    return [
-        PlannedTask(
-            domain=HealthDomain.FITNESS,
-            name="HIIT Workout",
-            duration_minutes=45,
-            intensity=0.8,
-            description="High-intensity interval training"
-        ),
+def create_sample_planned_tasks(user_goal: str = "") -> list[PlannedTask]:
+    """Create a sample set of planned tasks, customized by goal (using LLM or Heuristics)."""
+    
+    # 1. Try LLM Generation (Agentic)
+    api_key = os.getenv("GROQ_API_KEY")
+    
+    # DEBUG: Return debug task if key missing
+    if user_goal and not api_key:
+         return [PlannedTask(domain=HealthDomain.RECOVERY, name="DEBUG: No API Key", duration_minutes=0, intensity=0, description="Check .env")]
+
+    # DEBUG: Check if Groq lib is missing
+    if user_goal and api_key and not Groq:
+         return [PlannedTask(domain=HealthDomain.RECOVERY, name="DEBUG: Install 'groq'", duration_minutes=0, intensity=0, description="pip install groq")]
+
+    if user_goal and api_key and Groq:
+        try:
+            client = Groq(api_key=api_key)
+            system_prompt = """You are an expert Fitness Planner. Generate exactly 4 daily tasks based on user Goal.
+
+CRITICAL REQUIREMENTS:
+1. FIRST task MUST be domain "Fitness" (exercise/workout/training)
+2. Second task MUST be domain "Nutrition" (eating/hydration)
+3. Third and fourth tasks can be "Recovery" or "Mindfulness"
+
+Output STRICT JSON:
+{"tasks": [
+  {"domain": "Fitness", "name": "EXERCISE NAME", "duration_minutes": 45, "intensity": 0.7, "description": "..."},
+  {"domain": "Nutrition", "name": "...", "duration_minutes": 30, "intensity": 0.3, "description": "..."},
+  {"domain": "Recovery", "name": "...", "duration_minutes": 20, "intensity": 0.2, "description": "..."},
+  {"domain": "Mindfulness", "name": "...", "duration_minutes": 15, "intensity": 0.1, "description": "..."}
+]}
+
+The FIRST task MUST ALWAYS have domain "Fitness".
+"""
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Goal: {user_goal}"}
+                ],
+                response_format={"type": "json_object"}
+            )
+            import json
+            data = json.loads(response.choices[0].message.content)
+            tasks = []
+            
+            # Handle if wrapped in a key or raw list
+            items = data.get("tasks", []) if isinstance(data, dict) else data
+            # Fallback if specific key expected (Llama 3 sometimes wraps in "tasks")
+            if not items and isinstance(data, dict): 
+                # Try to find any list value
+                for v in data.values():
+                    if isinstance(v, list):
+                        items = v
+                        break
+            
+            for item in items:
+                # Map domain string to Enum
+                d_str = item.get("domain", "Fitness").upper()
+                domain_map = {
+                    "FITNESS": HealthDomain.FITNESS,
+                    "NUTRITION": HealthDomain.NUTRITION,
+                    "RECOVERY": HealthDomain.RECOVERY,
+                    "MINDFULNESS": HealthDomain.MINDFULNESS
+                }
+                domain = domain_map.get(d_str, HealthDomain.FITNESS)
+                
+                tasks.append(PlannedTask(
+                    domain=domain,
+                    name=item.get("name", "Activity"),
+                    duration_minutes=int(item.get("duration_minutes", 30)),
+                    intensity=float(item.get("intensity", 0.5)),
+                    description=item.get("description", "")
+                ))
+            
+            if tasks:
+                return tasks
+                
+        except Exception as e:
+            # DEBUG: Return error as task to see it in UI
+            return [PlannedTask(domain=HealthDomain.RECOVERY, name=f"Err: {str(e)[:20]}", duration_minutes=0, intensity=0, description=str(e))]
+
+    # 2. HEURISTIC FALLBACK (Regex)
+    # Base Tasks
+    tasks = [
         PlannedTask(
             domain=HealthDomain.NUTRITION,
             name="Meal Prep",
@@ -177,15 +304,67 @@ def create_sample_planned_tasks() -> list[PlannedTask]:
             duration_minutes=30,
             intensity=0.1,
             description="Wind-down routine before bed"
-        ),
-        PlannedTask(
+        )
+    ]
+    
+    # Dynamic Additions based on User Goal
+    goal_lower = user_goal.lower()
+    
+    if "muscle" in goal_lower or "strength" in goal_lower or "bulk" in goal_lower:
+        tasks.insert(0, PlannedTask(
+            domain=HealthDomain.FITNESS,
+            name="Heavy Lifting",
+            duration_minutes=60,
+            intensity=0.9,
+            description="Compound lifts for hypertrophy"
+        ))
+    elif "run" in goal_lower or "cardio" in goal_lower or "endurance" in goal_lower:
+        tasks.insert(0, PlannedTask(
+            domain=HealthDomain.FITNESS,
+            name="Long Run",
+            duration_minutes=90,
+            intensity=0.75,
+            description="Zone 2 aerobic base building"
+        ))
+    elif "stress" in goal_lower or "anxiety" in goal_lower or "calm" in goal_lower:
+        tasks.append(PlannedTask(
+            domain=HealthDomain.MINDFULNESS,
+            name="Deep Breathing",
+            duration_minutes=15,
+            intensity=0.1,
+            description="Box breathing for vagus nerve activation"
+        ))
+        # Swap HIIT for Yoga if high stress focus
+        tasks.insert(0, PlannedTask(
+            domain=HealthDomain.FITNESS,
+            name="Restorative Yoga",
+            duration_minutes=45,
+            intensity=0.3,
+            description="Gentle movement for cortisol reduction"
+        ))
+        return tasks # Return early to avoid adding HIIT default
+
+    # Default Fitness Task if no specific fitness goal found
+    if not any(t.domain == HealthDomain.FITNESS for t in tasks):
+        tasks.insert(0, PlannedTask(
+            domain=HealthDomain.FITNESS,
+            name="HIIT Workout",
+            duration_minutes=45,
+            intensity=0.8,
+            description="High-intensity interval training"
+        ))
+        
+    # Default Mindfulness
+    if "stress" not in goal_lower:
+         tasks.append(PlannedTask(
             domain=HealthDomain.MINDFULNESS,
             name="Meditation Session",
             duration_minutes=20,
             intensity=0.2,
             description="Guided mindfulness meditation"
-        )
-    ]
+        ))
+
+    return tasks
 
 
 def run_demo():

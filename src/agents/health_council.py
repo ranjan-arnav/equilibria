@@ -1,10 +1,19 @@
 """
 Multi-Agent Health Council - Collaborative Decision Making System
 Each specialized agent provides recommendations that are combined via weighted consensus.
+Now with LLM-enhanced reasoning for smarter decisions.
 """
 from dataclasses import dataclass
 from typing import Optional
 from enum import Enum
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
 
 class AgentRole(Enum):
@@ -230,6 +239,10 @@ class HealthCouncil:
         self.performance_coach = PerformanceCoachAgent()
         self.wellness_guardian = WellnessGuardianAgent()
         self.future_self = FutureSelfAgent()
+        
+        # Initialize Groq client for LLM deliberation
+        api_key = os.getenv("GROQ_API_KEY")
+        self.llm_client = Groq(api_key=api_key) if api_key and Groq else None
     
     def deliberate(
         self, 
@@ -238,7 +251,95 @@ class HealthCouncil:
         user_goal: str,
         decision_history: list
     ) -> ConsensusDecision:
-        """Gather recommendations from all agents and reach consensus."""
+        """Gather recommendations - uses LLM if available, otherwise heuristic agents."""
+        
+        # Try LLM-based deliberation first
+        if self.llm_client:
+            try:
+                return self._llm_deliberate(state_snapshot, planned_activity, user_goal)
+            except Exception as e:
+                print(f"LLM deliberation failed: {e}")
+                # Fall through to heuristic
+        
+        # Heuristic-based deliberation (original logic)
+        return self._heuristic_deliberate(state_snapshot, planned_activity, user_goal, decision_history)
+    
+    def _llm_deliberate(self, state_snapshot: dict, planned_activity: str, user_goal: str) -> ConsensusDecision:
+        """Use LLM for intelligent circuit breaker decision."""
+        prompt = f"""You are a Health Safety Council evaluating if an activity is safe.
+
+USER STATE:
+- Sleep: {state_snapshot.get('sleep_hours', 7)}h
+- Energy: {state_snapshot.get('energy_level', 5)}/10
+- Stress: {state_snapshot.get('stress_level', 'Medium')}
+
+PLANNED ACTIVITY: {planned_activity}
+USER GOAL: {user_goal}
+
+Evaluate if this activity is safe given the user's current state.
+
+Output STRICT JSON:
+{{
+  "action": "PROCEED" | "MODIFY" | "SKIP",
+  "consensus_level": 0.0-1.0,
+  "primary_reasoning": "One sentence explanation",
+  "agent_opinions": [
+    {{"role": "sleep", "action": "PROCEED|MODIFY|SKIP", "reasoning": "...", "confidence": 0.0-1.0}},
+    {{"role": "performance", "action": "...", "reasoning": "...", "confidence": 0.0-1.0}},
+    {{"role": "wellness", "action": "...", "reasoning": "...", "confidence": 0.0-1.0}},
+    {{"role": "future", "action": "...", "reasoning": "...", "confidence": 0.0-1.0}}
+  ]
+}}
+
+Safety Rules:
+- SKIP if sleep < 5h AND activity is high intensity
+- MODIFY if stress is High AND activity is cognitive
+- Consider user goal when evaluating
+"""
+        response = self.llm_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        import json
+        data = json.loads(response.choices[0].message.content)
+        
+        # Convert to our data structures
+        votes = []
+        role_map = {"sleep": AgentRole.SLEEP_SPECIALIST, "performance": AgentRole.PERFORMANCE_COACH,
+                    "wellness": AgentRole.WELLNESS_GUARDIAN, "future": AgentRole.FUTURE_SELF}
+        
+        for opinion in data.get("agent_opinions", []):
+            votes.append(AgentRecommendation(
+                agent_role=role_map.get(opinion.get("role", "sleep"), AgentRole.SLEEP_SPECIALIST),
+                action=opinion.get("action", "PROCEED"),
+                reasoning=opinion.get("reasoning", ""),
+                confidence=float(opinion.get("confidence", 0.7)),
+                priority_adjustment={}
+            ))
+        
+        final_action = data.get("action", "PROCEED")
+        dissenting = [f"{v.agent_role.value}: {v.reasoning}" for v in votes if v.action != final_action]
+        
+        return ConsensusDecision(
+            final_action=final_action,
+            consensus_level=float(data.get("consensus_level", 0.7)),
+            agent_votes=votes,
+            reasoning_summary=data.get("primary_reasoning", "LLM-based decision"),
+            dissenting_opinions=dissenting
+        )
+    
+    def _heuristic_deliberate(
+        self, 
+        state_snapshot: dict, 
+        planned_activity: str,
+        user_goal: str,
+        decision_history: list
+    ) -> ConsensusDecision:
+        """Original heuristic-based consensus (fallback)."""
         
         # Collect votes
         votes = [

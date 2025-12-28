@@ -37,6 +37,7 @@ from src.models.future_agent import FutureSelfAgent
 from src.agents import ConversationalAgent, get_chat_agent
 from src.agents.burnout_predictor import BurnoutPredictor, BurnoutForecast
 from src.agents.health_council import HealthCouncil, ConsensusDecision
+from src.agents.goal_negotiator import GoalNegotiator
 from src.agents.temporal_reasoner import TemporalReasoner, TemporalInsight
 from src.data import SyntheticDataGenerator
 
@@ -261,6 +262,9 @@ def init_session_state():
     # Multi-Agent System
     if "health_council" not in st.session_state:
         st.session_state.health_council = HealthCouncil()
+        
+    if "goal_negotiator" not in st.session_state:
+        st.session_state.goal_negotiator = GoalNegotiator()
     
     if "temporal_reasoner" not in st.session_state:
         st.session_state.temporal_reasoner = TemporalReasoner()
@@ -628,39 +632,7 @@ SCENARIO_CONFIG = {
 
 
 # Feeling Picker - Quick state presets
-def render_feeling_picker():
-    """Render friendly scenario picker buttons that update sidebar sliders."""
-    st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.05) 100%);
-        border: 1px solid rgba(249, 115, 22, 0.2);
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
-    ">
-        <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px; color: #f97316;">
-            🔥 How are you feeling today?
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Feeling buttons in a row
-    cols = st.columns(5)
-    
-    # Filter out "Custom" for buttons
-    button_scenarios = {k: v for k, v in SCENARIO_CONFIG.items() if k != "Custom"}
-    
-    for idx, (label, values) in enumerate(button_scenarios.items()):
-        with cols[idx]:
-            if st.button(label, use_container_width=True, key=f"feeling_{idx}"):
-                # Update widget keys directly
-                st.session_state.sleep_slider = values["sleep"]
-                st.session_state.energy_slider = values["energy"]
-                st.session_state.stress_radio = values["stress"]
-                st.session_state.time_slider = values["time"]
-                # Also sync the dropdown
-                st.session_state.scenario_select = label
-                st.rerun()
+
 
 
 # Sidebar - Today's Signals
@@ -677,24 +649,64 @@ def render_sidebar():
         )
         st.session_state.user_age = age
         
-        # Goal selection
+        # === GOAL NEGOTIATION UI ===
         st.markdown("**Primary Goal**")
-        goals = [
-            "Improve overall health",
-            "Lose weight",
-            "Build muscle",
-            "Reduce stress",
-            "Better sleep",
-            "Increase energy"
-        ]
-        goal = st.selectbox(
-            "Goal",
-            goals,
-            index=goals.index(st.session_state.user_goal) if st.session_state.user_goal in goals else 0,
+        
+        # Capture previous goal to detect changes
+        prev_goal = st.session_state.user_goal
+        
+        # Determine value (handle if user_goal is from old selectbox)
+        default_val = st.session_state.user_goal
+        
+        new_goal = st.text_input(
+            "Your Goal",
+            value=default_val,
+            placeholder="e.g. Lose 5kg in 2 weeks...",
             label_visibility="collapsed",
-            key="goal_select"
+            key="goal_input_negotiator"
         )
-        st.session_state.user_goal = goal
+        
+        # If goal changed, run negotiation
+        if new_goal != prev_goal:
+            with st.spinner("🤖 Evaluating goal feasibility..."):
+                # Force fresh instance to ensure code updates apply (Hackathon Hotfix)
+                import importlib
+                import src.agents.goal_negotiator
+                importlib.reload(src.agents.goal_negotiator)
+                from src.agents.goal_negotiator import GoalNegotiator
+                
+                st.session_state.goal_negotiator = GoalNegotiator()
+                
+                # Use a simple dummy state for now
+                negotiation = st.session_state.goal_negotiator.evaluate_goal(
+                    new_goal, 
+                    current_health_state={} 
+                )
+                
+                if negotiation.status == "ACCEPTED":
+                    st.session_state.user_goal = new_goal
+                    st.success("✅ Goal Accepted")
+                else:
+                    # Reject/Negotiate
+                    st.warning(f"⚠️ {negotiation.status}: {negotiation.reasoning}")
+                    if negotiation.counter_proposal:
+                        st.info(f"💡 Counter-Proposal: **{negotiation.counter_proposal}**")
+                        
+                        # We use columns for buttons to accept or keep editing
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("Accept Proposal", key="accept_btn"):
+                                st.session_state.user_goal = negotiation.counter_proposal
+                                st.success("Accepted!")
+                                st.rerun()
+                        with c2:
+                            st.caption("Or edit above.")
+                    else:
+                        st.error("Please revise your goal.")
+        
+        # Just update if accepted/no change to keep sync
+        if new_goal == prev_goal:
+            st.session_state.user_goal = new_goal
         
         st.markdown("---")
         
@@ -732,10 +744,12 @@ def render_sidebar():
         
         # Sleep slider
         st.markdown("🌙 **Sleep (hours)**")
+        if "sleep_slider" not in st.session_state:
+            st.session_state.sleep_slider = defaults["sleep"]
+
         sleep_hours = st.slider(
             "Sleep", 3.0, 10.0, 
-            st.session_state.get("sleep_slider", defaults["sleep"]), 
-            0.5,
+            step=0.5,
             label_visibility="collapsed",
             key="sleep_slider",
             on_change=set_custom_scenario
@@ -743,9 +757,11 @@ def render_sidebar():
         
         # Energy slider
         st.markdown("⚡ **Energy Level**")
+        if "energy_slider" not in st.session_state:
+            st.session_state.energy_slider = defaults["energy"]
+            
         energy_level = st.slider(
             "Energy", 1, 10, 
-            st.session_state.get("energy_slider", defaults["energy"]),
             label_visibility="collapsed",
             key="energy_slider",
             on_change=set_custom_scenario
@@ -760,10 +776,12 @@ def render_sidebar():
         stress_display_map = {"low": "Low", "medium": "Medium", "high": "High", "Low": "Low", "Medium": "Medium", "High": "High"}
         current_stress = stress_display_map.get(current_stress, "Medium")
         
+        if "stress_radio" not in st.session_state:
+            st.session_state.stress_radio = current_stress
+
         stress_level = st.radio(
             "Stress",
             ["Low", "Medium", "High"],
-            index=["Low", "Medium", "High"].index(current_stress),
             horizontal=True,
             label_visibility="collapsed",
             key="stress_radio",
@@ -772,10 +790,12 @@ def render_sidebar():
         
         # Available time slider
         st.markdown("⏰ **Available Time (hours)**")
+        if "time_slider" not in st.session_state:
+            st.session_state.time_slider = defaults["time"]
+            
         time_available = st.slider(
             "Time", 0.5, 4.0, 
-            st.session_state.get("time_slider", defaults["time"]), 
-            0.5,
+            step=0.5,
             label_visibility="collapsed",
             key="time_slider",
             on_change=set_custom_scenario
@@ -785,22 +805,70 @@ def render_sidebar():
         
         st.markdown("---")
         
-        # === CIRCUIT BREAKER LITE ===
-        # Detect critical biological state
-        is_sleep_critical = sleep_hours < 5.5
-        is_energy_critical = energy_level <= 3
-        is_stress_critical = stress_level.lower() == "high"
+        # === AGENTIC CIRCUIT BREAKER ===
+        # Instead of hardcoded rules, we ask the Health Council to deliberate on high intensity
         
-        # Determine if high-intensity activities should be blocked
-        # Block if biology is critical OR crisis mode is active
-        biology_blocked = is_sleep_critical or is_energy_critical or (is_stress_critical and energy_level <= 5) or st.session_state.crisis_mode
+        # 1. Create a temporary snapshot for the council
+        breaker_state = {
+            'sleep_hours': sleep_hours,
+            'energy_level': energy_level,
+            'stress_level': stress_level
+        }
+        
+        # Force reload Health Council to pick up LLM changes
+        import importlib
+        import src.agents.health_council
+        importlib.reload(src.agents.health_council)
+        from src.agents.health_council import HealthCouncil
+        st.session_state.health_council = HealthCouncil()
+        
+        # 2. Ask Council about the planned fitness activity (dynamic based on goal)
+        fitness_activity = "High Intensity Training"  # Will be overridden by dynamic tasks
+        if "current_planned_tasks" in st.session_state and st.session_state.current_planned_tasks:
+            fitness_task = next((t for t in st.session_state.current_planned_tasks if t.domain.value == "Fitness"), None)
+            if fitness_task:
+                fitness_activity = fitness_task.name
+        
+        breaker_consensus = st.session_state.health_council.deliberate(
+            state_snapshot=breaker_state,
+            planned_activity=fitness_activity,
+            user_goal=st.session_state.user_goal,
+            decision_history=st.session_state.decision_history[-5:] if st.session_state.decision_history else []
+        )
+        
+        # 3. Block if the Council votes "SKIP" or "MODIFY" with high confidence
+        # OR if crisis mode is explicitly active
+        agent_block_vote = breaker_consensus.final_action in ["SKIP", "MODIFY"]
+        biology_blocked = agent_block_vote or st.session_state.crisis_mode
+        
+        # Store in session state so it persists across reruns
+        st.session_state.biology_blocked = biology_blocked
         
         # Planned Tasks with Circuit Breaker
         st.markdown("### 📋 Planned Tasks")
+
+        # Always define reason (used later in blocked task rendering)
+        reason = "Activity recommended to be skipped."
         
-        # Show Circuit Breaker status
+        # Show Circuit Breaker status with Agent Reasoning
         if biology_blocked:
-            st.markdown("""
+            # Find the primary agent reasoning for the block
+            if breaker_consensus.dissenting_opinions: 
+                 # If there was dissent, the summary explains the block
+                 pass
+            
+            # Extract key reason from the most confident agent who voted to block
+            blockers = [v for v in breaker_consensus.agent_votes if v.action in ["SKIP", "MODIFY"]]
+            if blockers:
+                top_blocker = max(blockers, key=lambda x: x.confidence)
+                reason = f"{top_blocker.agent_role.value.title()}: {top_blocker.reasoning}"
+            elif st.session_state.crisis_mode:
+                reason = "Burnout Predictor: Critical risk threshold exceeded."
+            else:
+                # Use the LLM reasoning summary if available
+                reason = breaker_consensus.reasoning_summary
+
+            st.markdown(f"""
             <div style="
                 background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(127, 29, 29, 0.2) 100%);
                 border: 1px solid rgba(239, 68, 68, 0.4);
@@ -812,51 +880,86 @@ def render_sidebar():
                     <span style="font-size: 1.2rem;">🛡️</span>
                     <div>
                         <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #ef4444; font-weight: 600;">
-                            CIRCUIT BREAKER ACTIVE
+                            CIRCUIT BREAKER ENGAGED
                         </div>
                         <div style="font-size: 0.8rem; color: #fca5a5; margin-top: 2px;">
-                            High-intensity blocked by your biology
+                            {reason}
                         </div>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
         
+        # Store reason in session state for use in blocked task rendering
+        st.session_state.block_reason = reason
+        
         # HIIT - Blocked when in critical state
-        if biology_blocked:
-            st.markdown("""
-            <div style="
-                background: rgba(75, 75, 75, 0.3);
-                border: 1px solid rgba(100, 100, 100, 0.3);
-                border-radius: 8px;
-                padding: 10px 12px;
-                margin-bottom: 8px;
-                opacity: 0.6;
-                cursor: not-allowed;
-            ">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1rem; filter: grayscale(100%);">🏋️</span>
-                        <span style="color: #888; text-decoration: line-through;">HIIT Workout (45min)</span>
-                    </div>
-                    <span style="font-size: 0.65rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 2px 6px; border-radius: 4px;">
-                        🚫 BLOCKED
-                    </span>
-                </div>
-                <div style="font-size: 0.7rem; color: #ef4444; margin-top: 4px; font-style: italic;">
-                    "This action is blocked by your biology."
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            task1 = False  # Force disabled
-        else:
-            task1 = st.checkbox("🏋️ HIIT Workout (45min)", value=True, key="task_hiit")
+        # === DYNAMIC TASK RENDERING ===
+        # 1. Fetch tasks based on Goal (using our new LLM logic)
+        import importlib
+        import src.main
+        importlib.reload(src.main)  # Force reload to pick up code changes
+        from src.main import create_sample_planned_tasks
         
-        # Other tasks remain available
-        task2 = st.checkbox("🥗 Meal Prep (60min)", value=True, key="task_meal")
-        task3 = st.checkbox("😴 Sleep Routine (30min)", value=True, key="task_sleep")
-        task4 = st.checkbox("🧘 Meditation (20min)", value=True, key="task_meditation")
+        # Cache version - increment to force regeneration after code changes
+        CACHE_VERSION = 4  # Bumped to force new LLM prompt
+        cache_key = f"{st.session_state.user_goal}_v{CACHE_VERSION}"
         
+        # Regenerate if goal changed OR cache version is outdated
+        if st.session_state.get("task_cache_key") != cache_key:
+             with st.spinner("🤖 Generating plan..."):
+                try:
+                    st.session_state.current_planned_tasks = create_sample_planned_tasks(user_goal=st.session_state.user_goal)
+                    st.session_state.task_cache_key = cache_key
+                except Exception as e:
+                    st.error(f"Task generation error: {e}")
+                    st.session_state.current_planned_tasks = create_sample_planned_tasks() # Fallback
+
+        proposed_tasks = st.session_state.current_planned_tasks
+        
+        # 2. Render Checkboxes dynamically
+        tasks_input = {}
+        
+        # Special handling for "Fitness" task to apply Circuit Breaker
+        fitness_task = next((t for t in proposed_tasks if t.domain.value == "Fitness"), None)
+        
+        # FALLBACK: If no Fitness task, block the FIRST task instead
+        if not fitness_task and proposed_tasks:
+            fitness_task = proposed_tasks[0]
+        
+        other_tasks = [t for t in proposed_tasks if t != fitness_task]
+        
+        # Render Fitness Task - use disabled checkbox when blocked (reliable Streamlit approach)
+        if fitness_task:
+            # Use unique key that includes blocking state to force re-render
+            fitness_key = f"task_{fitness_task.name}_{'blocked' if biology_blocked else 'ok'}"
+            
+            if biology_blocked:
+                # Show blocked indicator
+                st.markdown(f"""<span style="color: #f87171; font-size: 0.7rem;">🚫 BLOCKED BY CIRCUIT BREAKER</span>""", unsafe_allow_html=True)
+                is_checked = st.checkbox(
+                    f"🏋️ ~~{fitness_task.name}~~ ({fitness_task.duration_minutes}min)", 
+                    value=False, 
+                    disabled=True,
+                    key=fitness_key
+                )
+                tasks_input[fitness_task.name] = False
+            else:
+                is_checked = st.checkbox(
+                    f"🏋️ {fitness_task.name} ({fitness_task.duration_minutes}min)", 
+                    value=True, 
+                    key=fitness_key
+                )
+                tasks_input[fitness_task.name] = is_checked
+
+        # Render Other Tasks
+        icon_map = {"Nutrition": "🥗", "Recovery": "😴", "Mindfulness": "🧘", "Fitness": "🏃"}
+        
+        for t in other_tasks:
+             icon = icon_map.get(t.domain.value, "✅")
+             is_checked = st.checkbox(f"{icon} {t.name} ({t.duration_minutes}min)", value=True, key=f"task_{t.name}")
+             tasks_input[t.name] = is_checked
+             
         # Show what's recommended when blocked
         if biology_blocked:
             st.markdown("""
@@ -872,19 +975,14 @@ def render_sidebar():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        
+             
         return {
             "sleep_hours": sleep_hours,
             "energy_level": energy_level,
             "stress_level": stress_level.lower(),
             "time_available": time_available,
             "biology_blocked": biology_blocked,
-            "tasks": {
-                "hiit": task1,
-                "meal": task2,
-                "sleep": task3,
-                "meditation": task4
-            }
+            "tasks": tasks_input # Now returns dynamic keys!
         }
 
 
@@ -1138,105 +1236,134 @@ def render_make_decision(inputs):
         </div>
         """, unsafe_allow_html=True)
     
-    # Mock calendar events - compact list
-    calendar_events = [
-        {"time": "6:30", "title": "HIIT", "type": "high_intensity", "icon": "🏋️"},
-        {"time": "8:00", "title": "Standup", "type": "work", "icon": "💼"},
-        {"time": "12:00", "title": "Lunch Walk", "type": "recovery", "icon": "🚶"},
-        {"time": "3:00", "title": "Deep Work", "type": "cognitive", "icon": "🧠"},
-        {"time": "6:00", "title": "Evening Run", "type": "high_intensity", "icon": "🏃"},
-        {"time": "9:00", "title": "Wind-Down", "type": "recovery", "icon": "🌙"},
-    ]
+    # Today's Schedule now uses the SAME tasks as Planned Tasks sidebar
+    # Convert PlannedTask objects to schedule format with times
+    planned_tasks = st.session_state.get("current_planned_tasks", [])
     
-    blocked_types = ["high_intensity", "cognitive"] if is_critical else []
+    # Map domain to type for blocking logic
+    domain_to_type = {
+        "Fitness": "high_intensity",
+        "Nutrition": "work",
+        "Recovery": "recovery",
+        "Mindfulness": "recovery"
+    }
     
-    # Create 3-column grid for 2 rows
-    row1_cols = st.columns(3)
-    row2_cols = st.columns(3)
-    all_cols = row1_cols + row2_cols
+    # Map domain to icon
+    domain_to_icon = {
+        "Fitness": "🏋️",
+        "Nutrition": "🥗",
+        "Recovery": "😴",
+        "Mindfulness": "🧘"
+    }
     
-    for idx, event in enumerate(calendar_events):
-        is_blocked = event["type"] in blocked_types
-        event_key = f"override_{event['title'].replace(' ', '_')}"
+    # Generate times (spread across the day)
+    times = ["06:00", "07:00", "09:30", "12:00", "15:00", "20:00"]
+    
+    calendar_events = []
+    for idx, task in enumerate(planned_tasks[:6]):  # Max 6 items
+        calendar_events.append({
+            "time": times[idx] if idx < len(times) else f"{8+idx}:00",
+            "title": task.name,
+            "type": domain_to_type.get(task.domain.value, "work"),
+            "icon": domain_to_icon.get(task.domain.value, "✅")
+        })
+    
+    # Use session state biology_blocked for schedule blocking
+    # Block first task (Fitness) when circuit breaker is engaged
+    is_biology_blocked = st.session_state.get("biology_blocked", False)
+    
+    # Create grid for schedule (2 rows x 3 cols or adjust based on count)
+    num_events = len(calendar_events)
+    if num_events > 0:
+        row1_cols = st.columns(min(3, num_events))
+        row2_cols = st.columns(min(3, max(0, num_events - 3))) if num_events > 3 else []
+        all_cols = list(row1_cols) + list(row2_cols)
         
-        if event_key not in st.session_state:
-            st.session_state[event_key] = False
-        
-        with all_cols[idx]:
-            if is_blocked and not st.session_state[event_key]:
-                # Blocked event - compact card
-                st.markdown(f"""
-                <div style="
-                    background: rgba(239, 68, 68, 0.06);
-                    border: 1px solid rgba(239, 68, 68, 0.2);
-                    border-radius: 8px;
-                    padding: 8px 10px;
-                    opacity: 0.6;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.65rem; color: #888;">{event['time']}</span>
-                        <span style="font-size: 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1px 4px; border-radius: 3px;">🚫</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: #666; text-decoration: line-through; margin-top: 2px;">
-                        {event['icon']} {event['title']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Tiny override link
-                if st.button("Override?", key=f"btn_{event_key}", help="Click to override"):
-                    st.session_state[event_key + "_explain"] = True
-                
-                if st.session_state.get(event_key + "_explain", False):
-                    st.caption("⚠️ Override not recommended")
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("✓", key=f"yes_{event_key}", help="Override"):
-                            st.session_state[event_key] = True
-                            st.session_state[event_key + "_explain"] = False
-                            st.rerun()
-                    with c2:
-                        if st.button("✕", key=f"no_{event_key}", help="Cancel"):
-                            st.session_state[event_key + "_explain"] = False
-                            st.rerun()
+        for idx, event in enumerate(calendar_events):
+            if idx >= len(all_cols):
+                break
+            # Block the FIRST task (Fitness) when circuit breaker engaged
+            is_blocked = (idx == 0 and is_biology_blocked)
+            event_key = f"override_{event['title'].replace(' ', '_')}"
             
-            elif is_blocked and st.session_state[event_key]:
-                # Override active - amber card
-                st.markdown(f"""
-                <div style="
-                    background: rgba(251, 191, 36, 0.08);
-                    border: 1px solid rgba(251, 191, 36, 0.3);
-                    border-radius: 8px;
-                    padding: 8px 10px;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.65rem; color: #fbbf24;">{event['time']}</span>
-                        <span style="font-size: 0.55rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">⚠️</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: #fcd34d; margin-top: 2px;">
-                        {event['icon']} {event['title']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            if event_key not in st.session_state:
+                st.session_state[event_key] = False
             
-            else:
-                # Normal event - clean card
-                st.markdown(f"""
-                <div style="
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.06);
-                    border-radius: 8px;
-                    padding: 8px 10px;
-                ">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.65rem; color: #888;">{event['time']}</span>
-                        <span style="font-size: 0.55rem; color: #10b981;">✓</span>
+            with all_cols[idx]:
+                if is_blocked and not st.session_state[event_key]:
+                    # Blocked event - compact card
+                    st.markdown(f"""
+                    <div style="
+                        background: rgba(239, 68, 68, 0.06);
+                        border: 1px solid rgba(239, 68, 68, 0.2);
+                        border-radius: 8px;
+                        padding: 8px 10px;
+                        opacity: 0.6;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.65rem; color: #888;">{event['time']}</span>
+                            <span style="font-size: 0.55rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 1px 4px; border-radius: 3px;">🚫</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #666; text-decoration: line-through; margin-top: 2px;">
+                            {event['icon']} {event['title']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.8rem; color: #fff; margin-top: 2px;">
-                        {event['icon']} {event['title']}
+                    """, unsafe_allow_html=True)
+                    
+                    # Tiny override link
+                    if st.button("Override?", key=f"btn_{event_key}", help="Click to override"):
+                        st.session_state[event_key + "_explain"] = True
+                    
+                    if st.session_state.get(event_key + "_explain", False):
+                        st.caption("⚠️ Override not recommended")
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            if st.button("✓", key=f"yes_{event_key}", help="Override"):
+                                st.session_state[event_key] = True
+                                st.session_state[event_key + "_explain"] = False
+                                st.rerun()
+                        with c2:
+                            if st.button("✕", key=f"no_{event_key}", help="Cancel"):
+                                st.session_state[event_key + "_explain"] = False
+                                st.rerun()
+            
+                elif is_blocked and st.session_state[event_key]:
+                    # Override active - amber card
+                    st.markdown(f"""
+                    <div style="
+                        background: rgba(251, 191, 36, 0.08);
+                        border: 1px solid rgba(251, 191, 36, 0.3);
+                        border-radius: 8px;
+                        padding: 8px 10px;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.65rem; color: #fbbf24;">{event['time']}</span>
+                            <span style="font-size: 0.55rem; background: rgba(251, 191, 36, 0.2); color: #fbbf24; padding: 1px 4px; border-radius: 3px;">⚠️</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #fcd34d; margin-top: 2px;">
+                            {event['icon']} {event['title']}
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                
+                else:
+                    # Normal event - clean card
+                    st.markdown(f"""
+                    <div style="
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.06);
+                        border-radius: 8px;
+                        padding: 8px 10px;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.65rem; color: #888;">{event['time']}</span>
+                            <span style="font-size: 0.55rem; color: #10b981;">✓</span>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #fff; margin-top: 2px;">
+                            {event['icon']} {event['title']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -1333,20 +1460,31 @@ def run_agent_decision(inputs):
         
         st.session_state.wearable_data = wearable
         
-        # Build planned tasks based on checkboxes
-        all_tasks = create_sample_planned_tasks()
+        # Build planned tasks (Hot Reload for Hackathon)
+        import importlib
+        import src.main
+        importlib.reload(src.main)
+        from src.main import create_sample_planned_tasks
+        
+        all_tasks = create_sample_planned_tasks(user_goal=st.session_state.user_goal)
         tasks = []
         task_mapping = {
-            "hiit": "HIIT Workout",
+            "hiit": ["HIIT Workout", "Heavy Lifting", "Long Run", "Restorative Yoga"], # Map to any potential fitness task
             "meal": "Meal Prep", 
             "sleep": "Sleep Optimization",
-            "meditation": "Meditation Session"
+            "meditation": ["Meditation Session", "Deep Breathing"]
         }
         
         for key, enabled in inputs['tasks'].items():
             if enabled:
                 for t in all_tasks:
-                    if task_mapping.get(key) in t.name:
+                    # Robust matching for dynamic tasks
+                    match_list = task_mapping.get(key)
+                    if isinstance(match_list, list):
+                        if any(m in t.name for m in match_list):
+                            tasks.append(t)
+                            break
+                    elif match_list and match_list in t.name:
                         tasks.append(t)
                         break
         
@@ -2574,10 +2712,21 @@ def render_council_view():
     elif st.session_state.decision_history:
         current_state = st.session_state.decision_history[-1].state_snapshot
     
+    # Determine primary activity from decision history or default
+    activity_context = "General Routine"
+    if st.session_state.last_decision and st.session_state.last_decision.decisions:
+        # impactful activities
+        impactful = [d.original_task.name for d in st.session_state.last_decision.decisions 
+                    if d.action.value in ["SKIP", "MODIFY"]]
+        if impactful:
+            activity_context = impactful[0]
+        elif st.session_state.last_decision.decisions:
+             activity_context = st.session_state.last_decision.decisions[0].original_task.name
+
     # Run Council Deliberation
     consensus = st.session_state.health_council.deliberate(
         state_snapshot=current_state,
-        planned_activity="HIIT Workout",
+        planned_activity=activity_context,
         user_goal=st.session_state.user_goal,
         decision_history=st.session_state.decision_history
     )
@@ -2590,11 +2739,11 @@ def render_council_view():
     <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid {consensus_color}; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <div style="font-size: 0.8rem; opacity: 0.7;">FINAL DECISION</div>
+                <div style="font-size: 0.8rem; opacity: 0.7;">TOPIC: {activity_context.upper()}</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: {consensus_color};">{consensus.final_action}</div>
             </div>
             <div style="text-align: right;">
-                <div style="font-size: 0.8rem; opacity: 0.7;">CONSENSUS</div>
+                <div style="font-size: 0.8rem; opacity: 0.7;">AGREEMENT</div>
                 <div style="font-size: 1.5rem; font-weight: 700; color: {consensus_color};">{consensus.consensus_level:.0%}</div>
             </div>
         </div>
@@ -2602,7 +2751,7 @@ def render_council_view():
     """, unsafe_allow_html=True)
     
     # Agent Votes
-    st.markdown("#### 🗳️ Agent Votes")
+    st.markdown("#### 🗳️ Agent Votes & Logic")
     cols = st.columns(4)
     
     agent_icons = {"sleep": "😴", "performance": "⚡", "wellness": "🧘", "future": "🔮"}
@@ -2612,16 +2761,27 @@ def render_council_view():
             icon = agent_icons.get(vote.agent_role.value, "🤖")
             action_color = "#10b981" if vote.action == "PROCEED" else "#f59e0b" if vote.action == "MODIFY" else "#ef4444"
             
+            # Format priority adjustments
+            priorities = ""
+            if vote.priority_adjustment:
+                priorities = "<div style='margin-top: 8px; font-size: 0.65rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 4px;'>"
+                for domain, weight in vote.priority_adjustment.items():
+                    arrow = "↑" if weight > 1.0 else "↓"
+                    color = "#10b981" if weight > 1.0 else "#ef4444"
+                    priorities += f"<div style='color: {color};'>{domain} {arrow} {int((weight-1)*100)}%</div>"
+                priorities += "</div>"
+            
             st.markdown(f"""
-            <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+            <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px; margin-bottom: 8px; height: 100%;">
                 <div style="font-size: 1.5rem; text-align: center;">{icon}</div>
-                <div style="font-size: 0.7rem; text-align: center; text-transform: uppercase; opacity: 0.7;">{vote.agent_role.value}</div>
-                <div style="font-size: 0.9rem; text-align: center; font-weight: 600; color: {action_color}; margin-top: 4px;">{vote.action}</div>
-                <div style="font-size: 0.65rem; text-align: center; opacity: 0.6; margin-top: 4px;">Confidence: {vote.confidence:.0%}</div>
+                <div style="font-size: 0.7rem; text-align: center; text-transform: uppercase; opacity: 0.7; letter-spacing: 1px;">{vote.agent_role.value}</div>
+                <div style="font-size: 1.1rem; text-align: center; font-weight: 700; color: {action_color}; margin: 8px 0;">{vote.action}</div>
+                <div style="font-size: 0.7rem; text-align: center; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px 6px; display: inline-block; width: 100%;">Conf: {vote.confidence:.0%}</div>
+                {priorities}
             </div>
             """, unsafe_allow_html=True)
             
-            with st.expander("Reasoning"):
+            with st.expander("Why?"):
                 st.markdown(f"_{vote.reasoning}_")
     
     # Dissenting Opinions
@@ -2629,6 +2789,55 @@ def render_council_view():
         st.markdown("#### ⚠️ Dissenting Opinions")
         for opinion in consensus.dissenting_opinions:
             st.warning(opinion)
+            
+    st.markdown("---")
+    
+    # Consensus Logic & Power Balance
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.markdown("#### 🧠 Consensus Logic")
+        
+        # Calculate power balance for visualization
+        action_scores = {}
+        for vote in consensus.agent_votes:
+            action_scores[vote.action] = action_scores.get(vote.action, 0) + vote.confidence
+            
+        leader = max(action_scores, key=action_scores.get)
+        runner_up = min(action_scores, key=action_scores.get) if len(action_scores) > 1 else None
+        
+        logic_text = f"The Council reached a **{consensus.final_action}** decision with **{consensus.consensus_level:.0%} confidence**."
+        
+        if len(action_scores) == 1:
+            logic_text += f" All agents were aligned in this recommendation."
+        else:
+            diff = action_scores[leader] - action_scores.get(runner_up, 0)
+            logic_text += f" The collective confidence for {leader} ({action_scores[leader]:.2f}) outweighed {runner_up} ({action_scores.get(runner_up,0):.2f})."
+            
+        st.info(logic_text)
+        
+    with c2:
+        st.markdown("#### ⚖️ Power Balance")
+        total_confidence = sum(action_scores.values())
+        
+        # Sort actions by score
+        sorted_actions = sorted(action_scores.items(), key=lambda x: x[1], reverse=True)
+        
+        for action, score in sorted_actions:
+            pct = score / total_confidence if total_confidence > 0 else 0
+            color = "#10b981" if action == "PROCEED" else "#f59e0b" if action == "MODIFY" else "#ef4444"
+            
+            st.markdown(f"""
+            <div style="margin-bottom: 8px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:2px;">
+                    <span style="font-weight:600; color:{color};">{action}</span>
+                    <span>{pct:.0%} (Weight: {score:.2f})</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; overflow: hidden;">
+                    <div style="background: {color}; width: {pct*100}%; height: 100%;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -2708,8 +2917,8 @@ def main():
     # Show crisis banner if active
     render_crisis_banner()
     
-    # Render friendly scenario picker
-    render_feeling_picker()
+
+
     
     # Tab navigation
     tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
