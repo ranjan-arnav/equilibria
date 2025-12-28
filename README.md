@@ -2,7 +2,17 @@
 
 **Multi-Agent Agentic AI System for Burnout Prevention and Wellness Optimization**
 
-Built for the Innov-AI-tion Healthcare & Fitness Hackathon
+---
+
+## 👥 Team
+
+| Name | Role |
+|------|------|
+| **Arnav Ranjan** | Team Lead |
+| **Om Raj** | Developer |
+| **Kushal Raj** | Developer |
+
+**College:** Manipal Institute of Technology, Manipal
 
 ---
 
@@ -103,27 +113,118 @@ sequenceDiagram
 
 ### Prerequisites
 
-- Python 3.10+
-- Groq API key (free at https://console.groq.com)
+Before you begin, ensure you have the following installed:
 
-### Quick Start
+| Requirement | Version | Download |
+|-------------|---------|----------|
+| Python | 3.10 or higher | [python.org](https://www.python.org/downloads/) |
+| pip | Latest | Comes with Python |
+| Git | Any | [git-scm.com](https://git-scm.com/downloads) |
+| Groq API Key | Free tier | [console.groq.com](https://console.groq.com) |
+
+### Step 1: Clone the Repository
 
 ```bash
-# Clone repository
-git clone https://github.com/YOUR_USERNAME/equilibra.git
-cd equilibra
+git clone https://github.com/ranjan-arnav/equilibria.git
+cd equilibria
+```
 
-# Install dependencies
+### Step 2: Create Virtual Environment (Recommended)
+
+**Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### Step 3: Install Dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-# Create .env file
-echo "GROQ_API_KEY=your_api_key_here" > .env
+This installs:
+- `streamlit` - Web UI framework
+- `groq` - LLM API client
+- `python-dotenv` - Environment variable management
+- `plotly` - Interactive charts
+- `pandas` - Data manipulation
+- `pydantic` - Data validation
 
-# Run application
+### Step 4: Get Groq API Key
+
+1. Visit [console.groq.com](https://console.groq.com)
+2. Sign up for a free account
+3. Navigate to **API Keys** section
+4. Click **Create API Key**
+5. Copy the generated key
+
+### Step 5: Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# Windows (PowerShell)
+New-Item -Path ".env" -ItemType File
+
+# macOS/Linux
+touch .env
+```
+
+Add your API key to the `.env` file:
+
+```env
+GROQ_API_KEY=gsk_your_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+```
+
+**Alternative: Streamlit Secrets**
+
+For deployment or if `.env` doesn't work:
+
+```bash
+# Create secrets directory
+mkdir -p .streamlit
+
+# Create secrets file
+```
+
+Add to `.streamlit/secrets.toml`:
+```toml
+GROQ_API_KEY = "gsk_your_api_key_here"
+GROQ_MODEL = "llama-3.3-70b-versatile"
+```
+
+### Step 6: Run the Application
+
+```bash
 python -m streamlit run ui/streamlit_app.py
 ```
 
-The app opens at `http://localhost:8501`
+The application will start and open in your browser at:
+```
+http://localhost:8501
+```
+
+### Step 7: First Time Setup
+
+1. Complete the 4-step onboarding:
+   - Enter your name
+   - Set your age
+   - Choose your primary health goal
+   - Review your personalized welcome
+
+2. Explore the dashboard tabs:
+   - **Home**: Daily metrics and burnout risk
+   - **Council**: Multi-agent deliberation
+   - **Make Decision**: Run the decision engine
+   - **Chat**: AI conversation (text/voice)
 
 ---
 
@@ -210,6 +311,7 @@ Final Decision: Reduce workout intensity
 - User is not seeking medical diagnosis
 
 ### Safety Thresholds
+
 | Metric | Safe | Caution | Critical |
 |--------|------|---------|----------|
 | Sleep | ≥7h | 6-7h | <6h |
@@ -217,55 +319,35 @@ Final Decision: Reduce workout intensity
 | Stress | Low | Moderate | High |
 
 ### LLM Behavior
-- Model: `llama-3.3-70b-versatile` via Groq
-- Response format: JSON for structured outputs
-- Fallback: Heuristic rules if LLM fails
+- **Model:** `llama-3.3-70b-versatile` via Groq
+- **Response format:** JSON for structured outputs
+- **Fallback:** Heuristic rules if LLM fails
 
 ---
 
 ## 🚧 Limitations
 
 ### Technical Limitations
+
 | Limitation | Impact | Mitigation |
 |------------|--------|------------|
-| Synthetic wearable data | No real biometrics | Future: Oura/Whoop integration |
+| Synthetic wearable data | No real biometrics | Simulated data for demo |
 | Groq free tier limits | Rate limiting possible | Graceful fallbacks implemented |
-| English only | Limited accessibility | Future: i18n support |
-| No persistent storage | Data lost on restart | Future: Database integration |
+| English only | Limited accessibility | UI in English |
+| No persistent storage | Data lost on restart | Session-based storage |
 
 ### Scope Limitations
+
 - **Not medical advice**: System provides wellness suggestions, not diagnoses
-- **Self-reported bias**: Relies on user honesty
-- **Single user**: No multi-user support currently
-
----
-
-## 🚀 Future Improvements
-
-### Short-Term (1-3 months)
-- [ ] Real wearable integration (Apple Health, Oura, Whoop)
-- [ ] Persistent user data storage
-- [ ] Push notifications for interventions
-- [ ] Mobile-responsive design
-
-### Medium-Term (3-6 months)
-- [ ] Proactive intervention system
-- [ ] Explainable AI decision trees
-- [ ] Social accountability features
-- [ ] Multi-language support
-
-### Long-Term (6-12 months)
-- [ ] Federated learning across users
-- [ ] Personalized agent weight tuning
-- [ ] Integration with calendar/productivity apps
-- [ ] Wearable-based real-time monitoring
+- **Self-reported bias**: Relies on user honesty for input data
+- **Single user**: Designed for individual use
 
 ---
 
 ## 📁 Project Structure
 
 ```
-equilibra/
+equilibria/
 ├── src/
 │   ├── agents/
 │   │   ├── health_council.py      # LLM-powered 4-agent deliberation
@@ -310,11 +392,3 @@ MIT License - See LICENSE file for details
 - **Groq** - Fast LLM inference
 - **Streamlit** - UI framework
 - **LangChain** - Agent orchestration patterns
-
-Built for the Innov-AI-tion Healthcare & Fitness Hackathon
-
----
-
-## 📞 Contact
-
-For questions or feedback, please open an issue on GitHub.
