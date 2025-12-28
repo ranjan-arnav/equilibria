@@ -2,6 +2,8 @@
 
 **Multi-Agent Agentic AI System for Burnout Prevention and Wellness Optimization**
 
+🔗 **Live Demo:** [https://equilibra.streamlit.app/](https://equilibra.streamlit.app/)
+
 ---
 
 ## 👥 Team
