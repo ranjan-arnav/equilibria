@@ -1,0 +1,64 @@
+{
+  "user_profile": {
+    "name": "arnav",
+    "age": 19,
+    "goal": "Maintenance"
+  },
+  "current_state": {
+    "sleep_hours": 8.0,
+    "energy_level": 9,
+    "stress_level": "Low",
+    "available_time": 3.0,
+    "computed_metrics": {
+      "readiness_score": 96,
+      "sleep_score": 100,
+      "burnout_risk_score": 3,
+      "burnout_risk_label": "Low Risk",
+      "burnout_primary_factor": "Insufficient data (Need 5+ sessions)"
+    }
+  },
+  "decision_history": [],
+  "chat_history": [],
+  "daily_tasks": [
+    {
+      "title": "High-Intensity Interval Training",
+      "duration": 45,
+      "domain": "fitness",
+      "reason": "Boost metabolism for maintenance",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Strength Training",
+      "duration": 45,
+      "domain": "fitness",
+      "reason": "Maintain muscle mass for overall health",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Mindful Meditation",
+      "duration": 15,
+      "domain": "mindfulness",
+      "reason": "Reduce stress and increase focus",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Balanced Meal Planning",
+      "duration": 30,
+      "domain": "nutrition",
+      "reason": "Optimize nutrient intake for maintenance",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Yoga for Flexibility",
+      "duration": 30,
+      "domain": "wellness",
+      "reason": "Improve flexibility and range of motion",
+      "is_blocked": false,
+      "block_reason": null
+    }
+  ]
+}

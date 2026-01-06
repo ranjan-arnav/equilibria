@@ -66,11 +66,10 @@ Never use clinical/medical terminology. Be conversational and supportive."""
         decision_summary: dict,
         state_snapshot: dict,
         constraints: list[str]
-    ) -> str:
+    ) -> dict:
         """
-        Generate a natural language explanation for a decision.
-        
-        Falls back to template-based explanation if LLM unavailable.
+        Generate a structured explanation including temporal & context analysis.
+        Returns a dict with: explanation, temporal_analysis, context_assessment.
         """
         if not self.client:
             return self._template_explanation(decision_summary, state_snapshot, constraints)
@@ -86,44 +85,42 @@ Never use clinical/medical terminology. Be conversational and supportive."""
         decision_summary: dict,
         state_snapshot: dict,
         constraints: list[str]
-    ) -> str:
-        """Generate explanation using Groq LLM."""
-        user_prompt = f"""Based on this health data and decision, provide a supportive explanation:
+    ) -> dict:
+        """Generate structured explanation using Groq LLM."""
+        user_prompt = f"""Analyze the following health decision context:
 
-**Today's State:**
-- Sleep: {state_snapshot.get('sleep_hours', 'N/A')} hours
-- Energy: {state_snapshot.get('energy_level', 'N/A')}/10
-- Stress: {state_snapshot.get('stress_level', 'N/A')}
-- Available time: {state_snapshot.get('time_available_hours', 'N/A')} hours
+**State:** Sleep:{state_snapshot.get('sleep_hours')}h, Energy:{state_snapshot.get('energy_level')}/10, Stress:{state_snapshot.get('stress_level')}
+**Constraints:** {', '.join(constraints) if constraints else 'None'}
+**Decisions:** {self._format_decisions(decision_summary.get('decisions', []))}
 
-**Active Constraints:** {', '.join(constraints) if constraints else 'None'}
+Provide a JSON response with:
+1. "explanation": 3-4 sentence warm, supportive logic for the decision.
+2. "temporal_analysis": Check urgency/timing. (e.g., "Urgency: Low. Recommendation: No immediate concerns.")
+3. "context_assessment": Assess risk/environment. (e.g., "Risk Level: Low. Optimal time for recovery.")
 
-**Decisions Made:**
-{self._format_decisions(decision_summary.get('decisions', []))}
-
-**Future Adjustments:**
-{self._format_impacts(decision_summary.get('future_impacts', []))}
-
-Provide a warm, supportive 3-4 sentence explanation of these decisions."""
+Output valid JSON ONLY."""
 
         response = self.client.chat.completions.create(
             model=self.config.model,
             messages=[
-                {"role": "system", "content": self.SYSTEM_PROMPT},
+                {"role": "system", "content": "You are a health analysis engine. Output only valid JSON."},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens
+            temperature=0.5,
+            max_tokens=600,
+            response_format={"type": "json_object"}
         )
         
-        return response.choices[0].message.content
+        import json
+        content = response.choices[0].message.content
+        return json.loads(content)
     
     def _template_explanation(
         self,
         decision_summary: dict,
         state_snapshot: dict,
         constraints: list[str]
-    ) -> str:
+    ) -> dict:
         """Generate template-based explanation when LLM unavailable."""
         parts = []
         
@@ -143,7 +140,6 @@ Provide a warm, supportive 3-4 sentence explanation of these decisions."""
         decisions = decision_summary.get('decisions', [])
         prioritized = [d for d in decisions if d.get('action') == 'PRIORITIZE']
         skipped = [d for d in decisions if d.get('action') == 'SKIP']
-        downgraded = [d for d in decisions if d.get('action') == 'DOWNGRADE']
         
         if prioritized:
             domains = [d['domain'] for d in prioritized]
@@ -153,17 +149,13 @@ Provide a warm, supportive 3-4 sentence explanation of these decisions."""
             domains = [d['domain'] for d in skipped]
             parts.append(f"It's okay to skip {', '.join(domains)} today – rest is productive too.")
         
-        if downgraded:
-            parts.append("I've adjusted some activities to lighter versions that still count.")
-        
-        # Future encouragement
-        impacts = decision_summary.get('future_impacts', [])
-        if impacts:
-            parts.append("I've also adjusted your plan for the next few days to help you recover.")
-        
         parts.append("You're making a smart choice by listening to your body! 💪")
         
-        return " ".join(parts)
+        return {
+            "explanation": " ".join(parts),
+            "temporal_analysis": "Urgency: Low. Recommendation: Consistent routine detected.",
+            "context_assessment": "Risk Level: Low. Conditions favorable for planned activities."
+        }
     
     def _format_decisions(self, decisions: list) -> str:
         """Format decisions for LLM prompt."""
@@ -242,6 +234,152 @@ Provide a 2-3 sentence supportive weekly insight that acknowledges patterns and 
         parts.append("Remember: consistency over perfection! 🌟")
         
         return " ".join(parts)
+
+
+    def generate_daily_tasks(
+        self,
+        state_snapshot: dict,
+        user_goal: str,
+        user_profile: dict
+    ) -> list[dict]:
+        """Generate a list of recommended daily tasks based on state and goal."""
+        
+        # Fallback tasks if LLM fails or is unavailable
+        fallback_tasks = [
+            {"id": "1", "title": "Light Stretching", "duration": 15, "domain": "fitness", "reason": "Low energy detected, focus on mobility."},
+            {"id": "2", "title": "Mindful Breathing", "duration": 10, "domain": "wellness", "reason": "Manage daily stress."}
+        ]
+
+        if not self.client:
+            return fallback_tasks
+
+        try:
+            prompt = f"""As a High-Performance Strategist & Health Coach, generate 3-5 aggressive, goal-oriented daily tasks for a user with the following profile:
+
+**User Profile:**
+- Name: {user_profile.get('name', 'User')}
+- Age: {user_profile.get('age', 30)}
+- Goal: {user_goal}
+
+**Current State:**
+- Sleep: {state_snapshot.get('sleep_hours')}h
+- Energy: {state_snapshot.get('energy_level')}/10
+- Stress: {state_snapshot.get('stress_level')}
+- Available Time: {state_snapshot.get('available_time')}h
+
+CIRCUIT BREAKER PROTOCOLS (ABSOLUTE OVERRIDES - CHECK FIRST):
+1. **CRITICAL SLEEP**: IF Sleep < 5 hours AND Goal implies High Intensity -> GENERATE the High Intensity task but MARK IT BLOCKED.
+   - Set "is_blocked": true
+   - Set "block_reason": "Circuit Breaker: Critical Sleep Debt. High intensity increases cortisol."
+2. **BURNOUT RISK**: IF Stress is High -> MARK Cognitive/Focus tasks as BLOCKED.
+   - Set "is_blocked": true
+   - Set "block_reason": "Circuit Breaker: High Stress. Brain rest required."
+3. **LOW ENERGY**: IF Energy < 4 -> MARK High Intensity tasks as BLOCKED.
+
+Rules (Apply if not blocked):
+1. REQUIRED DISTRIBUTION:
+   - 1-2 Fitness tasks (Aggressive)
+   - 1 Wellness task
+   - 1 Nutrition task
+   - 1 Mindfulness task
+2. PRIORITIZE THE USER'S GOAL. Be aggressive.
+3. If Energy is High (7+), push for maximum intensity/productivity in Fitness.
+4. Provide a short, punchy 'reason' connecting the task to their goal.
+
+Output valid JSON ONLY in this format:
+[
+  {{ "title": "Task Name", "duration": 30, "domain": "fitness", "reason": "Explanation", "is_blocked": false, "block_reason": null }}
+]"""
+            
+            response = self.client.chat.completions.create(
+                model=self.config.model,
+                messages=[
+                    {"role": "system", "content": "You are a high-performance coach. Output only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=500,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            content = response.choices[0].message.content
+            data = json.loads(content)
+            
+            # Handle potential wrapper keys like {"tasks": [...]}
+            if isinstance(data, dict):
+                if "tasks" in data:
+                    return data["tasks"]
+                # If meant to be a list but wrapped in a key
+                for key in data:
+                    if isinstance(data[key], list):
+                        return data[key]
+            
+            if isinstance(data, list):
+                return data
+                
+            return fallback_tasks
+
+        except Exception as e:
+            print(f"LLM Task Gen Error: {e}")
+            return fallback_tasks
+
+
+
+    def analyze_single_task(
+        self,
+        task_title: str,
+        state_snapshot: dict
+    ) -> dict:
+        """
+        Analyze a single task to determine domain and safety status based on state.
+        """
+        default_analysis = {
+            "domain": "productivity",
+            "is_safe": True,
+            "reason": "Standard task."
+        }
+        
+        if not self.client:
+            return default_analysis
+            
+        try:
+            prompt = f"""Analyze this task for a user with the following state:
+            
+**Task:** "{task_title}"
+
+**Current State:**
+- Sleep: {state_snapshot.get('sleep_hours')}h
+- Energy: {state_snapshot.get('energy_level')}/10
+- Stress: {state_snapshot.get('stress_level')}
+
+Determine:
+1. The most appropriate domain (Fitness, Nutrition, Mindfulness, Productivity, Wellness).
+2. Is it safe/appropriate given the simplified state? (e.g. High intensity fitness is unsafe if Energy < 4 or Sleep < 5).
+3. A short reasoning string (max 10 words).
+
+Output valid JSON ONLY:
+{{ "domain": "Fitness", "is_safe": false, "reason": "Energy too low for cardio." }}
+"""
+            
+            response = self.client.chat.completions.create(
+                model=self.config.model,
+                messages=[
+                    {"role": "system", "content": "You are a health analysis engine. Output only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=100,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            content = response.choices[0].message.content
+            return json.loads(content)
+            
+        except Exception as e:
+            print(f"LLM Task Analysis Error: {e}")
+            return default_analysis
 
 
 # Convenience function

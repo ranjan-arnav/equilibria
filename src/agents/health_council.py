@@ -196,7 +196,7 @@ class FutureSelfAgent:
         """Provide recommendation based on long-term patterns."""
         # Analyze recent skip patterns
         recent_skips = [d for d in decision_history[-7:] if any(
-            dec.action.value == "SKIP" for dec in d.decisions
+            dec.get("action") == "SKIP" for dec in d.get("decisions", [])
         )]
         
         skip_rate = len(recent_skips) / max(len(decision_history[-7:]), 1)
@@ -291,10 +291,17 @@ Output STRICT JSON:
   ]
 }}
 
-Safety Rules:
-- SKIP if sleep < 5h AND activity is high intensity
-- MODIFY if stress is High AND activity is cognitive
-- Consider user goal when evaluating
+CIRCUIT BREAKER PROTOCOLS (MUST FOLLOW):
+1. **CRITICAL SLEEP DEBT**: IF Sleep < 5 hours AND Activity is "High Intensity" (HIIT, Heavy Lifting, intense cardio) -> **MUST REPORT 'SKIP'**.
+   - Reason must start with: "CIRCUIT BREAKER TRIGGERED: Critical Sleep Debt."
+2. **BURNOUT RISK**: IF Stress is 'High' AND Activity adds 'High Cognitive Load' (Deep work, studying) -> **MUST REPORT 'MODIFY' or 'SKIP'**.
+   - Reason must start with: "CIRCUIT BREAKER TRIGGERED: High Stress Load."
+3. **INJURY RISK**: If user reports pain/injury -> **MUST REPORT 'SKIP'**.
+
+INSTRUCTIONS:
+- Check these protocols FIRST.
+- If ANY protocol is triggered, IGNORE user goal and output the required action immediately.
+- Only if NO protocols are triggered, proceed to evaluate based on goal.
 """
         response = self.llm_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
