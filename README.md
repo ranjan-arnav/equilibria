@@ -140,7 +140,8 @@ Before you begin, ensure you have the following installed:
 | Requirement | Version | Download |
 |-------------|---------|----------|
 | Python | 3.10 or higher | [python.org](https://www.python.org/downloads/) |
-| pip | Latest | Comes with Python |
+| Node.js | 18.x or higher | [nodejs.org](https://nodejs.org/) |
+| npm | Latest | Comes with Node.js |
 | Git | Any | [git-scm.com](https://git-scm.com/downloads) |
 | Groq API Key | Free tier | [console.groq.com](https://console.groq.com) |
 
@@ -151,33 +152,33 @@ git clone https://github.com/ranjan-arnav/equilibria.git
 cd equilibria
 ```
 
-### Step 2: Create Virtual Environment (Recommended)
-
-**Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-**macOS/Linux:**
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### Step 3: Install Dependencies
+### Step 2: Install Backend Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
 This installs:
-- `streamlit` - Web UI framework
+- `fastapi` - Modern web framework
+- `uvicorn` - ASGI server
 - `groq` - LLM API client
 - `python-dotenv` - Environment variable management
-- `plotly` - Interactive charts
-- `pandas` - Data manipulation
 - `pydantic` - Data validation
+
+### Step 3: Install Frontend Dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+This installs:
+- `react` - UI framework
+- `vite` - Build tool
+- `framer-motion` - Animation library
+- `lucide-react` - Icon library
+- `tailwindcss` - CSS framework
 
 ### Step 4: Get Groq API Key
 
@@ -206,47 +207,53 @@ GROQ_API_KEY=gsk_your_api_key_here
 GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-**Alternative: Streamlit Secrets**
-
-For deployment or if `.env` doesn't work:
-
-```bash
-# Create secrets directory
-mkdir -p .streamlit
-
-# Create secrets file
-```
-
-Add to `.streamlit/secrets.toml`:
-```toml
-GROQ_API_KEY = "gsk_your_api_key_here"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-```
-
 ### Step 6: Run the Application
 
+**Single Command (Recommended):**
+
 ```bash
-python -m streamlit run ui/streamlit_app.py
+python start_app.py
 ```
 
-The application will start and open in your browser at:
+This will automatically start:
+- Backend (FastAPI) on `http://localhost:8000`
+- Frontend (React/Vite) on `http://localhost:5173`
+
+**Manual Start (Alternative):**
+
+Terminal 1 - Backend:
+```bash
+python -m uvicorn backend.main:app --reload --port 8000
 ```
-http://localhost:8501
+
+Terminal 2 - Frontend:
+```bash
+cd frontend
+npm run dev
 ```
 
-### Step 7: First Time Setup
+### Step 7: Access the Application
 
-1. Complete the 4-step onboarding:
-   - Enter your name
-   - Set your age
-   - Choose your primary health goal
-   - Review your personalized welcome
+Open your browser and navigate to:
+```
+http://localhost:5173
+```
 
-2. Explore the dashboard tabs:
-   - **Home**: Daily metrics and burnout risk
-   - **Council**: Multi-agent deliberation
-   - **Make Decision**: Run the decision engine
-   - **Chat**: AI conversation (text/voice)
+The application will display the landing page. Click **"View Live Demo"** to start onboarding.
+
+### Step 8: First Time Setup
+
+1. Complete the onboarding flow:
+   - Enter your name and age
+   - Set current health state (sleep, energy, stress)
+   - Define your health goal
+   - Review AI-generated daily tasks
+
+2. Explore the dashboard:
+   - **Home**: Daily metrics and burnout risk monitor
+   - **Council**: Multi-agent deliberation view
+   - **Make Decision**: Run the AI decision engine
+   - **Chat**: Conversational AI interface
 
 ---
 
