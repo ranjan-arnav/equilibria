@@ -35,6 +35,26 @@ Equilibra is an advanced **agentic AI system** that prevents burnout through mul
 | 🎙️ **Voice Interaction** | Speak to the AI using Groq Whisper transcription |
 | 🎮 **Gamification** | Daily streaks and achievement system |
 
+### 🎨 UI Updates (v2.0)
+
+The latest version features a completely redesigned landing page and onboarding experience:
+
+| Update | Description |
+|--------|-------------|
+| 🎨 **Modern Landing Page** | Sleek design with gradient effects and animations |
+| 💎 **Brand Logo** | Diamond logo integrated across navigation, footer, and onboarding |
+| 🌈 **Gradient Effects** | Purple/blue/orange background glows for visual depth |
+| ✨ **Curved Underline** | Decorative U-shaped underline beneath "Health Balance" |
+| 🎭 **Pure Black Theme** | Enhanced contrast with true black background |
+| 📱 **Responsive Design** | Optimized for all screen sizes |
+| 🎬 **Framer Motion** | Smooth entrance animations and transitions |
+
+**Tech Stack:**
+- React + TypeScript
+- Framer Motion for animations
+- Tailwind CSS for styling
+- Lucide React icons
+
 ---
 
 ## 🏗️ System Architecture
