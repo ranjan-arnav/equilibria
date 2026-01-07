@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, Mail, ArrowRight, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { AlertTriangle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { LoginCharacters } from './LoginCharacters';
 
 export const LoginView = () => {
@@ -25,6 +25,18 @@ export const LoginView = () => {
 
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center relative overflow-hidden font-sans selection:bg-red-500/30">
+            {/* Back Button */}
+            <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4 }}
+                onClick={() => navigate('/')}
+                className="absolute top-6 right-6 flex items-center gap-2 px-4 py-2 text-zinc-400 hover:text-white bg-zinc-900/50 hover:bg-zinc-800/50 border border-zinc-800 hover:border-zinc-700 rounded-full transition-all z-50"
+            >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-sm font-medium">Back to Home</span>
+            </motion.button>
+
             {/* Background Glow Effects */}
             <div className="fixed top-1/4 left-1/4 w-[500px] h-[500px] bg-red-600/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="fixed bottom-1/4 right-1/4 w-[500px] h-[500px] bg-orange-600/10 rounded-full blur-[120px] pointer-events-none" />

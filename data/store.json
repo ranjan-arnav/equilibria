@@ -1,18 +1,18 @@
 {
   "user_profile": {
-    "name": "Arnav",
+    "name": "Alex",
     "age": 30,
-    "goal": "High Performance"
+    "goal": "Maximize Productivity"
   },
   "current_state": {
-    "sleep_hours": 7.0,
-    "energy_level": 5,
+    "sleep_hours": 7.5,
+    "energy_level": 7,
     "stress_level": "Medium",
     "available_time": 2.0,
     "computed_metrics": {
-      "readiness_score": 64,
-      "sleep_score": 87,
-      "burnout_risk_score": 40,
+      "readiness_score": 75,
+      "sleep_score": 93,
+      "burnout_risk_score": 31,
       "burnout_risk_label": "Low Risk",
       "burnout_primary_factor": "Insufficient data (Need 5+ sessions)"
     }
@@ -21,36 +21,18 @@
   "chat_history": [],
   "daily_tasks": [
     {
-      "title": "High Intensity Interval Training (HIIT)",
-      "duration": 45,
-      "domain": "fitness",
-      "reason": "Boost metabolism and increase energy to support high performance",
-      "is_blocked": true,
-      "block_reason": "Circuit Breaker: Critical Sleep Debt. High intensity increases cortisol."
-    },
-    {
-      "title": "Yoga for Stress Relief",
-      "duration": 30,
-      "domain": "wellness",
-      "reason": "Reduce stress and improve flexibility to enhance overall performance",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Meal Prep for Energy",
-      "duration": 30,
-      "domain": "nutrition",
-      "reason": "Fuel your body with nutrient-dense foods to optimize energy levels",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Mindful Meditation",
+      "id": "1",
+      "title": "Light Stretching",
       "duration": 15,
-      "domain": "mindfulness",
-      "reason": "Improve focus and mental clarity to drive high performance",
-      "is_blocked": false,
-      "block_reason": null
+      "domain": "fitness",
+      "reason": "Low energy detected, focus on mobility."
+    },
+    {
+      "id": "2",
+      "title": "Mindful Breathing",
+      "duration": 10,
+      "domain": "wellness",
+      "reason": "Manage daily stress."
     }
   ]
 }
