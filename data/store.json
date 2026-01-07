@@ -1,18 +1,18 @@
 {
   "user_profile": {
-    "name": "arnav",
-    "age": 19,
+    "name": "Arnav",
+    "age": 30,
     "goal": "Maintenance"
   },
   "current_state": {
-    "sleep_hours": 8.0,
-    "energy_level": 9,
-    "stress_level": "Low",
-    "available_time": 3.0,
+    "sleep_hours": 7.0,
+    "energy_level": 5,
+    "stress_level": "Medium",
+    "available_time": 2.0,
     "computed_metrics": {
-      "readiness_score": 96,
-      "sleep_score": 100,
-      "burnout_risk_score": 3,
+      "readiness_score": 64,
+      "sleep_score": 87,
+      "burnout_risk_score": 40,
       "burnout_risk_label": "Low Risk",
       "burnout_primary_factor": "Insufficient data (Need 5+ sessions)"
     }
@@ -21,10 +21,10 @@
   "chat_history": [],
   "daily_tasks": [
     {
-      "title": "High-Intensity Interval Training",
-      "duration": 45,
+      "title": "Brisk Morning Walk",
+      "duration": 30,
       "domain": "fitness",
-      "reason": "Boost metabolism for maintenance",
+      "reason": "Boost energy levels to support maintenance goal",
       "is_blocked": false,
       "block_reason": null
     },
@@ -32,31 +32,31 @@
       "title": "Strength Training",
       "duration": 45,
       "domain": "fitness",
-      "reason": "Maintain muscle mass for overall health",
+      "reason": "Improve overall muscle mass for better metabolism and maintenance",
       "is_blocked": false,
       "block_reason": null
     },
     {
-      "title": "Mindful Meditation",
+      "title": "Mindful Breathing",
       "duration": 15,
       "domain": "mindfulness",
-      "reason": "Reduce stress and increase focus",
+      "reason": "Reduce medium stress levels to enhance overall well-being",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Hydration and Electrolyte Balance",
+      "duration": 10,
+      "domain": "wellness",
+      "reason": "Support bodily functions and energy levels for maintenance",
       "is_blocked": false,
       "block_reason": null
     },
     {
       "title": "Balanced Meal Planning",
-      "duration": 30,
+      "duration": 20,
       "domain": "nutrition",
-      "reason": "Optimize nutrient intake for maintenance",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Yoga for Flexibility",
-      "duration": 30,
-      "domain": "wellness",
-      "reason": "Improve flexibility and range of motion",
+      "reason": "Ensure proper nutrient intake for maintenance and energy",
       "is_blocked": false,
       "block_reason": null
     }

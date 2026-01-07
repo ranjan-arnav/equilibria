@@ -32,6 +32,8 @@ Equilibra is an advanced **agentic AI system** that prevents burnout through mul
 | 🎯 **Goal Negotiator** | AI evaluates goal safety and suggests modifications |
 | 🔮 **Temporal Reasoning** | Analyzes past patterns, present context, and future trajectories |
 | ⚠️ **Crisis Prediction** | Forecasts burnout 3-7 days in advance |
+| ⚠️ **Crisis Prediction** | Forecasts burnout 3-7 days in advance |
+| 📊 **System Simulation** | Simulates 7-day health trajectory with dynamic visualizations |
 | 🎙️ **Voice Interaction** | Speak to the AI using Groq Whisper transcription |
 | 🎮 **Gamification** | Daily streaks and achievement system |
 
@@ -43,6 +45,7 @@ The latest version features a completely redesigned landing page and onboarding 
 |--------|-------------|
 | 🎨 **Modern Landing Page** | Sleek design with gradient effects and animations |
 | 💎 **Brand Logo** | Diamond logo integrated across navigation, footer, and onboarding |
+| 📊 **Simulation Tab** | Interactive 7-day forecasting with scenario analysis |
 | 🌈 **Gradient Effects** | Purple/blue/orange background glows for visual depth |
 | ✨ **Curved Underline** | Decorative U-shaped underline beneath "Health Balance" |
 | 🎭 **Pure Black Theme** | Enhanced contrast with true black background |

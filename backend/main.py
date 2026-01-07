@@ -9,7 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from src.core.config import AppConfig
 
 # Import API routers
-from backend.api import negotiator, council, burnout, chat, decision, planning, state
+from backend.api import negotiator, council, burnout, chat, decision, planning, state, simulation
 
 app = FastAPI(
     title="Equilibria API",
@@ -33,6 +33,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(decision.router, prefix="/api/decision", tags=["Decision"])
 app.include_router(planning.router, prefix="/api/planning", tags=["Planning"])
 app.include_router(state.router, prefix="/api/state", tags=["State"])
+app.include_router(simulation.router, prefix="/api/simulation", tags=["Simulation"])
 
 @app.get("/")
 def read_root():

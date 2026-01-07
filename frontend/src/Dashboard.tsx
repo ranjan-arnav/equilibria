@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, MessageSquare, History, Wand2, Settings, LogOut, Flame, Target, Zap, Lightbulb, Clock, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, MessageSquare, History, Wand2, Settings, LogOut, Flame, Target, Zap, Lightbulb, Clock, Activity, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from './api';
 import type { HealthState, FullState } from './api';
@@ -7,6 +7,7 @@ import type { HealthState, FullState } from './api';
 import { CouncilView } from './views/CouncilView';
 import { MakeDecisionView } from './views/MakeDecisionView';
 import { ChatView } from './views/ChatView';
+import { SimulationView } from './views/SimulationView';
 
 // --- Shared Components ---
 
@@ -40,7 +41,13 @@ const StatCard = ({ label, value, subtext, icon: Icon, color }: { label: string,
 
 // --- Views ---
 
-const HomeView = ({ fullState }: { fullState: FullState | null }) => {
+interface HomeViewProps {
+    fullState: FullState | null;
+    streak?: string;
+    adherence?: string;
+}
+
+const HomeView = ({ fullState, streak = "1 days", adherence = "100%" }: HomeViewProps) => {
     // Derived values
     const metrics = fullState?.current_state.computed_metrics;
 
@@ -48,8 +55,8 @@ const HomeView = ({ fullState }: { fullState: FullState | null }) => {
     const riskScore = metrics?.burnout_risk_score ?? 10;
     const riskLabel = metrics?.burnout_risk_label?.toUpperCase() ?? "LOW RISK";
     const readiness = metrics?.readiness_score ?? 71;
-    const streak = "1 days"; // Still mocked until streak tracking is added
-    const adherence = "100%"; // Still mocked
+
+    // Use passed props, defaulting if undefined
 
     const lastDecision = fullState?.decision_history?.[fullState.decision_history.length - 1];
 
@@ -152,78 +159,10 @@ const HomeView = ({ fullState }: { fullState: FullState | null }) => {
                         </div>
                     </div>
                 ) : (
-                    <div className="text-zinc-500 italic p-4 text-center bg-zinc-950/30 rounded-xl border border-dashed border-zinc-800">
-                        Make your first decision to see the Health Council in action! 🚀
+                    <div className="text-center py-6 text-zinc-500 text-sm">
+                        No decisions recorded today.
                     </div>
                 )}
-            </div>
-        </div>
-    );
-};
-
-// Simulation View (Hidden logic for inputs)
-const SimulationView = ({ sleep, energy, stress, time, updateMetrics }: any) => {
-    return (
-        <div className="max-w-2xl mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-8">
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <Wand2 size={24} className="text-red-500" />
-                System Simulation
-            </h2>
-            <p className="text-zinc-500 mb-8">
-                Adjust these metrics to simulate different user states and test the system's response in real-time.
-            </p>
-
-            <div className="space-y-8">
-                <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-2 block flex justify-between">
-                        <span>Sleep Duration</span>
-                        <span className="text-blue-400">{sleep} hr</span>
-                    </label>
-                    <input
-                        type="range" min="3" max="10" step="0.5" value={sleep}
-                        onChange={(e) => updateMetrics('sleep_hours', parseFloat(e.target.value))}
-                        className="w-full accent-blue-500 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                    />
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-2 block flex justify-between">
-                        <span>Energy Level</span>
-                        <span className="text-yellow-400">{energy}/10</span>
-                    </label>
-                    <input
-                        type="range" min="1" max="10" value={energy}
-                        onChange={(e) => updateMetrics('energy_level', parseInt(e.target.value))}
-                        className="w-full accent-yellow-500 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                    />
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-3 block">Stress Level</label>
-                    <div className="grid grid-cols-3 gap-3">
-                        {['Low', 'Medium', 'High'].map((lvl) => (
-                            <button
-                                key={lvl}
-                                onClick={() => updateMetrics('stress_level', lvl)}
-                                className={`py-2 text-sm font-medium rounded-lg transition-all border ${stress === lvl
-                                    ? 'bg-zinc-800 text-white border-zinc-600 shadow-sm'
-                                    : 'text-zinc-600 border-zinc-800 hover:border-zinc-700'
-                                    }`}
-                            >
-                                {lvl}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-zinc-400 mb-2 block flex justify-between">
-                        <span>Available Time</span>
-                        <span className="text-green-400">{time} hr</span>
-                    </label>
-                    <input
-                        type="range" min="0.5" max="4.0" step="0.5" value={time}
-                        onChange={(e) => updateMetrics('available_time', parseFloat(e.target.value))}
-                        className="w-full accent-green-500 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                    />
-                </div>
             </div>
         </div>
     );
@@ -234,33 +173,16 @@ export const Dashboard = () => {
     const [activeTab, setActiveTab] = useState('home');
 
     // Joint State
-    const [age, setAge] = useState(25);
-    const [goal, setGoal] = useState("Improve overall health");
-    const [sleep, setSleep] = useState(7.0);
-    const [energy, setEnergy] = useState(6);
-    const [stress, setStress] = useState<'Low' | 'Medium' | 'High'>("Medium");
-    const [time, setTime] = useState(2.0);
     const [fullState, setFullState] = useState<FullState | null>(null);
-
-    const currentState: HealthState = {
-        sleep_hours: sleep,
-        energy_level: energy,
-        stress_level: stress,
-        available_time: time
-    };
+    const [currentStreak, setCurrentStreak] = useState("1 days");
+    const [currentAdherence, setCurrentAdherence] = useState("100%");
 
     const loadState = async () => {
         try {
             const state = await api.getState();
             setFullState(state);
-            setAge(state.user_profile.age);
-            setGoal(state.user_profile.goal);
-            setSleep(state.current_state.sleep_hours);
-            setEnergy(state.current_state.energy_level);
-            setStress(state.current_state.stress_level);
-            setTime(state.current_state.available_time);
-        } catch (e) {
-            console.error("Failed to load backend state", e);
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -269,101 +191,66 @@ export const Dashboard = () => {
         loadState();
     }, []);
 
-    const updateMetrics = (field: string, value: any) => {
-        const newState = { sleep_hours: sleep, energy_level: energy, stress_level: stress, available_time: time, [field]: value };
-
-        if (field === 'sleep_hours') setSleep(value);
-        if (field === 'energy_level') setEnergy(value);
-        if (field === 'stress_level') setStress(value);
-        if (field === 'available_time') setTime(value);
-
-        api.updateMetrics(newState as HealthState).then((updatedState) => {
-            // Update fullState with the new computed metrics so UI updates instantly
-            if (fullState) {
-                setFullState({
-                    ...fullState,
-                    current_state: updatedState
-                });
-            }
-        }).catch(console.error);
+    const updateMetrics = async (key: string, value: any) => {
+        if (!fullState) return;
+        const newState = { ...fullState.current_state, [key]: value };
+        try {
+            await api.updateMetrics(newState);
+            loadState(); // Refresh full state to get calculated metrics
+        } catch (e) {
+            console.error(e);
+        }
     };
 
-    const sharedProps = {
-        age, goal, sleep, energy, stress, time,
-        fullState,
-        updateMetrics
-    };
+    const currentState = fullState?.current_state;
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-white font-sans flex">
+        <div className="flex min-h-screen bg-black text-white font-sans selection:bg-red-500/30">
             {/* Sidebar */}
-            <aside className="w-64 border-r border-zinc-900 p-6 flex flex-col h-screen fixed top-0 left-0 bg-zinc-950 z-20">
+            <aside className="w-72 border-r border-zinc-800 p-6 flex flex-col fixed h-full bg-black z-50">
                 <div className="flex items-center gap-3 mb-10 pl-2">
-                    <div className="w-8 h-8 flex items-center justify-center">
+                    <div className="w-10 h-10 flex items-center justify-center">
                         <img src="/diamond.png" alt="Equilibra Logo" className="w-full h-full object-contain" />
                     </div>
-                    <div className="text-2xl font-bold tracking-tight">Equilibra</div>
+                    <span className="text-2xl font-bold tracking-tight">Equilibria</span>
                 </div>
 
-                <div className="space-y-2 flex-1">
-                    <SidebarItem
-                        icon={LayoutDashboard}
-                        label="Home"
-                        active={activeTab === 'home'}
-                        onClick={() => setActiveTab('home')}
-                    />
-                    <SidebarItem
-                        icon={Users}
-                        label="Council"
-                        active={activeTab === 'council'}
-                        onClick={() => setActiveTab('council')}
-                    />
-                    <SidebarItem
-                        icon={Wand2}
-                        label="Make Decision"
-                        active={activeTab === 'make-decision'}
-                        onClick={() => setActiveTab('make-decision')}
-                    />
-                    <SidebarItem
-                        icon={Activity}
-                        label="Simulation"
-                        active={activeTab === 'simulation'}
-                        onClick={() => setActiveTab('simulation')}
-                    />
-                    <SidebarItem
-                        icon={MessageSquare}
-                        label="Chat"
-                        active={activeTab === 'chat'}
-                        onClick={() => setActiveTab('chat')}
-                    />
-                    <SidebarItem
-                        icon={History}
-                        label="History"
-                        active={activeTab === 'history'}
-                        onClick={() => setActiveTab('history')}
-                    />
-                </div>
+                <nav className="space-y-2 flex-1">
+                    <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+                    <SidebarItem icon={Users} label="Health Council" active={activeTab === 'council'} onClick={() => setActiveTab('council')} />
+                    <SidebarItem icon={Wand2} label="Make Decision" active={activeTab === 'make-decision'} onClick={() => setActiveTab('make-decision')} />
+                    <SidebarItem icon={Calendar} label="Simulation" active={activeTab === 'simulation'} onClick={() => setActiveTab('simulation')} />
+                    <SidebarItem icon={MessageSquare} label="Assistant" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
+                    <SidebarItem icon={History} label="History" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+                    <SidebarItem icon={Settings} label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+                </nav>
 
-                <div className="space-y-2 pt-8 border-t border-zinc-900">
-                    <SidebarItem icon={Settings} label="Settings" />
-                    <SidebarItem
-                        icon={LogOut}
-                        label="Log Out"
-                        onClick={() => {
-                            api.resetSession().then(() => {
-                                setFullState(null);
-                                window.location.href = '/';
-                            });
+                <div className="mt-auto pt-6 border-t border-zinc-800 space-y-2">
+                    <div className="flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+                        onClick={async () => {
+                            await api.resetSession();
+                            window.location.reload();
                         }}
-                    />
+                    >
+                        <Wand2 size={20} className="rotate-180" />
+                        <span className="font-medium">Reset Session</span>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-red-400 cursor-pointer transition-colors"
+                        onClick={() => {
+                            window.location.href = '/';
+                        }}
+                    >
+                        <LogOut size={20} />
+                        <span className="font-medium">Log Out</span>
+                    </div>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 ml-64 p-8">
-                <header className="flex justify-between items-center mb-10">
+            <main className="flex-1 ml-72 p-8 md:p-12 max-w-7xl mx-auto w-full">
+                <header className="flex justify-between items-center mb-12">
                     <div>
-                        <h1 className="text-2xl font-bold text-white mb-1">
+                        <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
                             {activeTab === 'home' ? 'Dashboard' :
                                 activeTab === 'council' ? 'Health Council' :
                                     activeTab === 'make-decision' ? 'Make Decision' :
@@ -371,7 +258,7 @@ export const Dashboard = () => {
                                             activeTab === 'chat' ? 'Assistant Chat' :
                                                 activeTab === 'history' ? 'History' : 'Adaptation'}
                         </h1>
-                        <p className="text-zinc-500 text-sm">Professional AI Health Balance System</p>
+                        <p className="text-zinc-400 text-sm">Professional AI Health Balance System</p>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -390,7 +277,7 @@ export const Dashboard = () => {
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
                     >
-                        {activeTab === 'home' && <HomeView fullState={fullState} />}
+                        {activeTab === 'home' && <HomeView fullState={fullState} streak={currentStreak} adherence={currentAdherence} />}
                         {activeTab === 'council' && <CouncilView lastDecision={fullState?.decision_history?.[fullState.decision_history.length - 1]} />}
                         {activeTab === 'make-decision' && <MakeDecisionView
                             currentState={currentState}
@@ -398,7 +285,18 @@ export const Dashboard = () => {
                             userProfile={fullState?.user_profile}
                             onDecisionComplete={loadState}
                         />}
-                        {activeTab === 'simulation' && <SimulationView {...sharedProps} />}
+                        {activeTab === 'simulation' && <SimulationView onSimulationComplete={(finalState) => {
+                            if (finalState) {
+                                // Update real metrics
+                                // But primarily update the Mocked Stats for display
+                                setCurrentStreak("7 days");
+                                setCurrentAdherence("98%");
+
+                                api.updateMetrics(finalState).then(() => {
+                                    loadState();
+                                });
+                            }
+                        }} />}
                         {activeTab === 'chat' && <ChatView />}
                         {activeTab === 'history' && <div className="p-8 text-center text-zinc-500">History View Coming Soon</div>}
                         {activeTab === 'settings' && <div className="p-8 text-center text-zinc-500">Settings View</div>}

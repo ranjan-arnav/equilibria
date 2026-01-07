@@ -18,6 +18,20 @@ export interface HealthState {
     computed_metrics?: ComputedMetrics;
 }
 
+export interface DailyProjection {
+    day: string;
+    stress_load: number;
+    energy_level: number;
+    readiness_score: number;
+    metrics: ComputedMetrics;
+}
+
+export interface SimulationResponse {
+    projections: DailyProjection[];
+    final_state: HealthState;
+    insights: string[];
+}
+
 export interface GoalNegotiationResponse {
     status: 'ACCEPTED' | 'NEGOTIATE' | 'REJECTED';
     reasoning: string;
@@ -102,6 +116,19 @@ export const api = {
             body: JSON.stringify(state)
         });
         if (!response.ok) throw new Error('Failed to predict burnout');
+        return response.json();
+    },
+
+    runSimulation: async (scenarioId: string, dailyTime: number): Promise<SimulationResponse> => {
+        const response = await fetch(`${API_URL}/simulation/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenario_id: scenarioId, daily_time: dailyTime })
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Simulation failed');
+        }
         return response.json();
     },
 
