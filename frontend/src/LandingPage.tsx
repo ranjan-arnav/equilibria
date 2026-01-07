@@ -89,7 +89,7 @@ const LandingPage = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
           >
             <button
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate('/login')}
               className="px-10 py-4 bg-gradient-to-r from-red-500 to-orange-500 rounded-full font-semibold text-lg flex items-center justify-center gap-3 mx-auto hover:shadow-[0_0_40px_rgba(239,68,68,0.5)] transition-all"
             >
               <Play className="w-5 h-5 fill-current" /> View Live Demo

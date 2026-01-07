@@ -2,7 +2,7 @@
   "user_profile": {
     "name": "Arnav",
     "age": 30,
-    "goal": "Maintenance"
+    "goal": "High Performance"
   },
   "current_state": {
     "sleep_hours": 7.0,
@@ -21,42 +21,34 @@
   "chat_history": [],
   "daily_tasks": [
     {
-      "title": "Brisk Morning Walk",
-      "duration": 30,
-      "domain": "fitness",
-      "reason": "Boost energy levels to support maintenance goal",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Strength Training",
+      "title": "High Intensity Interval Training (HIIT)",
       "duration": 45,
       "domain": "fitness",
-      "reason": "Improve overall muscle mass for better metabolism and maintenance",
+      "reason": "Boost metabolism and increase energy to support high performance",
+      "is_blocked": true,
+      "block_reason": "Circuit Breaker: Critical Sleep Debt. High intensity increases cortisol."
+    },
+    {
+      "title": "Yoga for Stress Relief",
+      "duration": 30,
+      "domain": "wellness",
+      "reason": "Reduce stress and improve flexibility to enhance overall performance",
       "is_blocked": false,
       "block_reason": null
     },
     {
-      "title": "Mindful Breathing",
+      "title": "Meal Prep for Energy",
+      "duration": 30,
+      "domain": "nutrition",
+      "reason": "Fuel your body with nutrient-dense foods to optimize energy levels",
+      "is_blocked": false,
+      "block_reason": null
+    },
+    {
+      "title": "Mindful Meditation",
       "duration": 15,
       "domain": "mindfulness",
-      "reason": "Reduce medium stress levels to enhance overall well-being",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Hydration and Electrolyte Balance",
-      "duration": 10,
-      "domain": "wellness",
-      "reason": "Support bodily functions and energy levels for maintenance",
-      "is_blocked": false,
-      "block_reason": null
-    },
-    {
-      "title": "Balanced Meal Planning",
-      "duration": 20,
-      "domain": "nutrition",
-      "reason": "Ensure proper nutrient intake for maintenance and energy",
+      "reason": "Improve focus and mental clarity to drive high performance",
       "is_blocked": false,
       "block_reason": null
     }
